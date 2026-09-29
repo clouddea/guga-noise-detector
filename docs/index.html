@@ -56,7 +56,7 @@
   .ghost-btn:hover{background:var(--pink)}
 
   /* ---------- Hero ---------- */
-  .hero{display:grid;grid-template-columns:1.15fr .85fr;gap:40px;align-items:center;padding:72px 0 64px}
+  .hero{display:grid;grid-template-columns:1.15fr .85fr;gap:40px;align-items:center;padding-top:72px;padding-bottom:64px}
   .eyebrow{display:inline-block;font-size:12.5px;font-weight:800;color:var(--accent-ink);background:var(--pink-soft);border-radius:12px;padding:5px 13px;margin-bottom:18px}
   .hero h1{font-size:46px;line-height:1.1}
   .hero .en{font-size:14px;font-weight:800;color:var(--ink-2);letter-spacing:1.6px;margin-top:8px}
@@ -69,20 +69,18 @@
   .btn.ghost:active{transform:translateY(4px);box-shadow:0 2px 0 #FBE3EB}
   .meta{font-size:13px;color:var(--ink-2);margin-top:16px}
   .hero-art{position:relative;display:flex;justify-content:center;align-items:center}
-  .hero-art::before{content:'';position:absolute;width:340px;height:340px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#FDF3F7 0%,#FCEFF4 60%,#F7C9D3 100%)}
-  .hero-art img{position:relative;width:290px;filter:drop-shadow(0 18px 34px rgba(196,120,150,.22));animation:float 5s ease-in-out infinite}
-  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+  .hero-art img{width:100%;aspect-ratio:3/2;object-fit:cover;object-position:50% 42%;border-radius:26px;box-shadow:0 20px 44px rgba(196,120,150,.22)}
 
   /* ---------- 通用区块 ---------- */
-  .section{padding:56px 0}
+  .section{padding-top:56px;padding-bottom:56px}
   .section h2{font-size:30px}
   .section-sub{font-size:15px;color:var(--ink-2);margin-top:12px;max-width:42em}
 
   /* ---------- 四档表情 ---------- */
   .levels{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:32px}
-  .level-card{background:#fff;border:1.5px solid var(--line);border-radius:22px;padding:10px 10px 14px;transition:transform .15s ease,border-color .15s}
+  .level-card{min-width:0;background:#fff;border:1.5px solid var(--line);border-radius:22px;padding:10px 10px 14px;transition:transform .15s ease,border-color .15s}
   .level-card:hover{transform:translateY(-4px);border-color:#F4C4D6}
-  .level-card img{border-radius:15px;background:var(--cream)}
+  .level-card img{width:100%;border-radius:15px;background:var(--cream)}
   .level-cap{display:flex;align-items:center;gap:7px;margin-top:11px;padding:0 4px}
   .dot{width:9px;height:9px;border-radius:50%;flex:none}
   .level-cap b{font-size:14.5px;font-weight:900}
@@ -115,20 +113,46 @@
   .disclaimer{font-size:12.5px;color:var(--ink-2);margin-top:20px;line-height:1.85;max-width:60em}
 
   @media (max-width:860px){
-    .hero{grid-template-columns:1fr;padding:44px 0 40px;text-align:center}
+    .hero{grid-template-columns:1fr;padding-top:44px;padding-bottom:40px;text-align:center}
     .hero .lead{margin-left:auto;margin-right:auto}
     .cta{justify-content:center}
     .hero h1{font-size:36px}
-    .hero-art{order:-1}
-    .hero-art img{width:220px}
-    .hero-art::before{width:260px;height:260px}
+    .hero-art{order:-1;max-width:420px;margin:0 auto}
     .levels{grid-template-columns:repeat(2,1fr)}
     .features{grid-template-columns:1fr}
     .download{grid-template-columns:1fr;padding:32px 24px;text-align:center}
     .spec{justify-content:center}
     .dl-right{order:-1}
-    .section{padding:40px 0}
+    .section{padding-top:40px;padding-bottom:40px}
     .section h2{font-size:24px}
+  }
+
+  @media (max-width:560px){
+    .wrap{padding:0 18px}
+    .hero{padding-top:30px;padding-bottom:28px;gap:24px}
+    .hero h1{font-size:31px}
+    .hero .en{font-size:12px;letter-spacing:1.2px}
+    .lead{font-size:14.5px;margin-top:16px}
+    .cta{gap:10px;margin-top:22px}
+    .btn{font-size:15px;padding:13px 24px}
+    .meta{font-size:12px;line-height:1.7}
+    .section{padding-top:34px;padding-bottom:34px}
+    .section h2{font-size:22px}
+    .section-sub{font-size:13.5px}
+    /* 四档表情在窄屏改成横向滑动，保证截图看得清 */
+    .levels{
+      display:flex;overflow-x:auto;scroll-snap-type:x mandatory;
+      gap:14px;margin:24px -18px 0;padding:0 18px 12px;
+      scrollbar-width:none;-webkit-overflow-scrolling:touch;
+    }
+    .levels::-webkit-scrollbar{display:none}
+    .level-card{flex:0 0 72%;scroll-snap-align:start}
+    .feature{padding:18px 18px 16px}
+    .download{padding:28px 20px;border-radius:24px;gap:20px}
+    .download h2{font-size:22px}
+    .dl-right img{width:128px;margin-bottom:10px}
+    .foot-row{flex-direction:column;align-items:flex-start;gap:12px}
+    .disclaimer{font-size:12px}
   }
 </style>
 </head>
@@ -159,7 +183,7 @@
       <p class="meta">v1.0.0 · 9.0 MB · 需要 Android 7.0 及以上 · 无需登录 · 数据只存本机</p>
     </div>
     <div class="hero-art">
-      <img src="assets/gg-wave.png" alt="咕嗄——穿着企鹅连体衣的小女孩">
+      <img src="assets/hero-scene.webp" alt="咕嗄在开满野花的草地上追蝴蝶">
     </div>
   </section>
 
