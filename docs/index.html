@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>咕嗄声音检测 · GugaNoiseDetector</title>
+<meta name="description" content="一个穿着企鹅连体衣的小女孩，替你聆听世界的音量。安卓环境噪声分贝检测 App：实时仪表、波形图、历史记录，角色表情随分贝等级切换。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="咕嗄声音检测 · GugaNoiseDetector">
+<meta property="og:description" content="安卓环境噪声分贝检测 App：实时仪表、波形图、历史记录，角色表情随分贝等级切换。">
+<meta property="og:image" content="https://clouddea.github.io/guga-noise-detector/assets/gg-wave.png">
+<link rel="icon" href="assets/gg-wave.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#FFFDF7;
+    --pink:#F7C9D3;
+    --pink-soft:#FCEFF4;
+    --yellow:#FBE7A1;
+    --blue:#BFE3F0;
+    --mint:#C9E6C0;
+    --accent:#EE8FB4;
+    --accent-line:#E57DA5;
+    --accent-ink:#B84A78;
+    --ink:#463C43;
+    --ink-2:#7A6D74;
+    --line:#F3E9EC;
+    --shell:#1a1a1a;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;
+    background:var(--cream);
+    color:var(--ink);
+    font-family:'Nunito',-apple-system,BlinkMacSystemFont,'PingFang SC','Hiragino Sans GB','Microsoft YaHei UI','Microsoft YaHei',sans-serif;
+    font-weight:600;
+    line-height:1.75;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+  h1,h2,h3{font-weight:900;letter-spacing:.4px;line-height:1.25;margin:0}
+  p{margin:0}
+  a{color:inherit;text-decoration:none}
+  img{display:block;max-width:100%}
+
+  /* ---------- 顶栏 ---------- */
+  .nav{position:sticky;top:0;z-index:50;background:rgba(255,253,247,.88);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .nav-inner{display:flex;align-items:center;justify-content:space-between;height:64px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:900;font-size:16px}
+  .brand img{width:36px;height:36px;border-radius:50%;background:var(--blue)}
+  .ghost-btn{font-size:13px;font-weight:800;color:var(--accent-ink);background:var(--pink-soft);border-radius:14px;padding:7px 16px;transition:background .15s}
+  .ghost-btn:hover{background:var(--pink)}
+
+  /* ---------- Hero ---------- */
+  .hero{display:grid;grid-template-columns:1.15fr .85fr;gap:40px;align-items:center;padding:72px 0 64px}
+  .eyebrow{display:inline-block;font-size:12.5px;font-weight:800;color:var(--accent-ink);background:var(--pink-soft);border-radius:12px;padding:5px 13px;margin-bottom:18px}
+  .hero h1{font-size:46px;line-height:1.1}
+  .hero .en{font-size:14px;font-weight:800;color:var(--ink-2);letter-spacing:1.6px;margin-top:8px}
+  .lead{font-size:16px;color:var(--ink);margin-top:20px;max-width:34em}
+  .cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px}
+  .btn{display:inline-flex;align-items:center;gap:8px;font-size:16px;font-weight:900;letter-spacing:.5px;border-radius:29px;padding:15px 30px;transition:transform .12s ease,box-shadow .12s ease,background .15s}
+  .btn.primary{background:var(--pink);color:var(--ink);box-shadow:0 6px 0 #EAB2C2}
+  .btn.primary:active{transform:translateY(4px);box-shadow:0 2px 0 #EAB2C2}
+  .btn.ghost{background:#fff;color:var(--accent-ink);border:2.5px solid #F2B9CD;box-shadow:0 6px 0 #FBE3EB}
+  .btn.ghost:active{transform:translateY(4px);box-shadow:0 2px 0 #FBE3EB}
+  .meta{font-size:13px;color:var(--ink-2);margin-top:16px}
+  .hero-art{position:relative;display:flex;justify-content:center;align-items:center}
+  .hero-art::before{content:'';position:absolute;width:340px;height:340px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#FDF3F7 0%,#FCEFF4 60%,#F7C9D3 100%)}
+  .hero-art img{position:relative;width:290px;filter:drop-shadow(0 18px 34px rgba(196,120,150,.22));animation:float 5s ease-in-out infinite}
+  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+
+  /* ---------- 通用区块 ---------- */
+  .section{padding:56px 0}
+  .section h2{font-size:30px}
+  .section-sub{font-size:15px;color:var(--ink-2);margin-top:12px;max-width:42em}
+
+  /* ---------- 四档表情 ---------- */
+  .levels{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:32px}
+  .level-card{background:#fff;border:1.5px solid var(--line);border-radius:22px;padding:10px 10px 14px;transition:transform .15s ease,border-color .15s}
+  .level-card:hover{transform:translateY(-4px);border-color:#F4C4D6}
+  .level-card img{border-radius:15px;background:var(--cream)}
+  .level-cap{display:flex;align-items:center;gap:7px;margin-top:11px;padding:0 4px}
+  .dot{width:9px;height:9px;border-radius:50%;flex:none}
+  .level-cap b{font-size:14.5px;font-weight:900}
+  .level-cap span{font-size:12.5px;color:var(--ink-2);font-weight:700}
+
+  /* ---------- 功能 ---------- */
+  .features{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:32px}
+  .feature{background:#fff;border:1.5px solid var(--line);border-radius:22px;padding:20px 20px 18px}
+  .feature .ic{width:38px;height:38px;border-radius:13px;display:flex;align-items:center;justify-content:center;margin-bottom:13px}
+  .feature h3{font-size:16px}
+  .feature p{font-size:13.5px;color:var(--ink-2);margin-top:7px;line-height:1.7}
+  .f1 .ic{background:#E3F1F8}.f2 .ic{background:#E7F3E1}.f3 .ic{background:#FBF0CF}
+  .f4 .ic{background:#FBE3EA}.f5 .ic{background:#E9E4F5}.f6 .ic{background:#E4F2F8}
+
+  /* ---------- 下载 ---------- */
+  .download{background:linear-gradient(160deg,#FCEFF4 0%,#FDF3F7 55%,#FFF7E9 100%);border-radius:28px;padding:44px 40px;display:grid;grid-template-columns:1.2fr .8fr;gap:32px;align-items:center}
+  .download h2{font-size:27px}
+  .spec{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+  .spec span{font-size:12.5px;font-weight:800;color:var(--ink);background:#fff;border-radius:12px;padding:5px 13px}
+  .dl-note{font-size:13px;color:var(--ink-2);margin-top:16px;line-height:1.8}
+  .dl-right{text-align:center}
+  .dl-right img{width:150px;margin:0 auto 14px}
+
+  /* ---------- 页脚 ---------- */
+  footer{border-top:1px solid var(--line);margin-top:40px;padding:34px 0 46px}
+  .foot-row{display:flex;flex-wrap:wrap;gap:14px 26px;align-items:center;justify-content:space-between;font-size:13.5px}
+  .foot-links{display:flex;flex-wrap:wrap;gap:18px}
+  .foot-links a{color:var(--accent-ink);font-weight:800}
+  .foot-links a:hover{text-decoration:underline}
+  .disclaimer{font-size:12.5px;color:var(--ink-2);margin-top:20px;line-height:1.85;max-width:60em}
+
+  @media (max-width:860px){
+    .hero{grid-template-columns:1fr;padding:44px 0 40px;text-align:center}
+    .hero .lead{margin-left:auto;margin-right:auto}
+    .cta{justify-content:center}
+    .hero h1{font-size:36px}
+    .hero-art{order:-1}
+    .hero-art img{width:220px}
+    .hero-art::before{width:260px;height:260px}
+    .levels{grid-template-columns:repeat(2,1fr)}
+    .features{grid-template-columns:1fr}
+    .download{grid-template-columns:1fr;padding:32px 24px;text-align:center}
+    .spec{justify-content:center}
+    .dl-right{order:-1}
+    .section{padding:40px 0}
+    .section h2{font-size:24px}
+  }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap nav-inner">
+    <div class="brand">
+      <img src="assets/gg-wave.png" alt="咕嗄">
+      <span>咕嗄声音检测</span>
+    </div>
+    <a class="ghost-btn" href="https://github.com/clouddea/guga-noise-detector" target="_blank" rel="noopener">GitHub</a>
+  </div>
+</header>
+
+<main>
+  <!-- ================= Hero ================= -->
+  <section class="wrap hero">
+    <div class="hero-text">
+      <span class="eyebrow">安卓 · 环境噪声检测</span>
+      <h1>咕嗄声音检测</h1>
+      <p class="en">GUGANOISEDETECTOR</p>
+      <p class="lead">咕嗄是一个穿着企鹅连体衣的小女孩。她替你聆听世界的音量——家里的安静、办公室的嗡鸣、马路上呼啸而过的车流。声音太大时，她的表情会替你着急，提醒你戴上耳机，或者走远一点。</p>
+      <div class="cta">
+        <a class="btn primary" href="guga-noise-detector-v1.0.0.apk" download>下载 APK</a>
+        <a class="btn ghost" href="https://github.com/clouddea/guga-noise-detector" target="_blank" rel="noopener">查看源码</a>
+      </div>
+      <p class="meta">v1.0.0 · 9.0 MB · 需要 Android 7.0 及以上 · 无需登录 · 数据只存本机</p>
+    </div>
+    <div class="hero-art">
+      <img src="assets/gg-wave.png" alt="咕嗄——穿着企鹅连体衣的小女孩">
+    </div>
+  </section>
+
+  <!-- ================= 表情随分贝切换 ================= -->
+  <section class="wrap section">
+    <h2>表情随分贝等级切换</h2>
+    <p class="section-sub">这是咕嗄最特别的地方：她不只报一个数字，还会用表情告诉你现在到底吵不吵。下面四张都是在真机上实测的截图。</p>
+    <div class="levels">
+      <figure class="level-card" style="margin:0">
+        <img src="assets/level-quiet.png" alt="安静：30.0 dB，角色在睡觉">
+        <figcaption class="level-cap"><i class="dot" style="background:#5FA8C4"></i><b>安静</b><span>&lt; 45 dB · 睡觉</span></figcaption>
+      </figure>
+      <figure class="level-card" style="margin:0">
+        <img src="assets/level-normal.png" alt="正常：45.5 dB，角色很开心">
+        <figcaption class="level-cap"><i class="dot" style="background:#6DB866"></i><b>正常</b><span>45–60 dB · 开心</span></figcaption>
+      </figure>
+      <figure class="level-card" style="margin:0">
+        <img src="assets/level-noisy.png" alt="嘈杂：71.1 dB，角色很震惊">
+        <figcaption class="level-cap"><i class="dot" style="background:#CF9A24"></i><b>嘈杂</b><span>60–80 dB · 震惊</span></figcaption>
+      </figure>
+      <figure class="level-card" style="margin:0">
+        <img src="assets/level-loud.png" alt="震耳：80.6 dB，角色生气了">
+        <figcaption class="level-cap"><i class="dot" style="background:#DD6486"></i><b>震耳</b><span>&gt; 80 dB · 生气</span></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ================= 功能 ================= -->
+  <section class="wrap section">
+    <h2>它都能做什么</h2>
+    <p class="section-sub">一个安静的测量工具，不打扰你，也不上传你的任何数据。</p>
+    <div class="features">
+      <div class="feature f1">
+        <div class="ic">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5FA8C4" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 13 8.6 8.8"/></svg>
+        </div>
+        <h3>实时分贝仪表</h3>
+        <p>柔和的圆角表盘，指针随环境音量实时摆动，一眼看出当前的分贝等级。</p>
+      </div>
+      <div class="feature f2">
+        <div class="ic">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6DB866" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13h4l2.5-6 3 12 2.5-6h8"/></svg>
+        </div>
+        <h3>分贝波形图</h3>
+        <p>记录最近 60 秒的音量起伏，检测结束后保存完整波形，回看什么时候最吵。</p>
+      </div>
+      <div class="feature f3">
+        <div class="ic">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#CF9A24" stroke-width="2.2" stroke-linecap="round"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg>
+        </div>
+        <h3>四项统计值</h3>
+        <p>最小值、平均值、中位数、最大值。平均值按能量平均（Leq）计算，更贴近真实听感。</p>
+      </div>
+      <div class="feature f4">
+        <div class="ic">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#DD6486" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.4"/><path d="M12 7.5V12l3.2 2.1"/></svg>
+        </div>
+        <h3>历史记录</h3>
+        <p>每次检测都存成一条记录：时间、地点、平均与最大分贝、波形缩略图，点开有详情。</p>
+      </div>
+      <div class="feature f5">
+        <div class="ic">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8A7BC8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 5 6v6c0 4.4 3 7.6 7 9 4-1.4 7-4.6 7-9V6z"/></svg>
+        </div>
+        <h3>只存本机</h3>
+        <p>不需要注册登录，所有记录只写在手机本地，不上传、不联网、不采集设备信息。</p>
+      </div>
+      <div class="feature f6">
+        <div class="ic">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5FA8C4" stroke-width="2.2" stroke-linecap="round"><path d="M12 21s7-6.3 7-11a7 7 0 1 0-14 0c0 4.7 7 11 7 11z"/><circle cx="12" cy="10" r="2.4"/></svg>
+        </div>
+        <h3>带上地点</h3>
+        <p>每条记录自动记下当时的定位，方便回想「是在哪儿这么吵」。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 下载 ================= -->
+  <section class="wrap section" id="download">
+    <div class="download">
+      <div>
+        <h2>下载安装</h2>
+        <div class="spec">
+          <span>版本 v1.0.0</span>
+          <span>9.0 MB</span>
+          <span>Android 7.0+</span>
+          <span>免费 · 开源 MIT</span>
+        </div>
+        <div class="cta" style="margin-top:22px">
+          <a class="btn primary" href="guga-noise-detector-v1.0.0.apk" download>下载 APK</a>
+        </div>
+        <p class="dl-note">
+          下载后在手机上打开 APK 安装即可。首次安装系统会提示「允许安装未知来源的应用」，按提示允许一下就好。
+          也可以直接到 <a href="https://github.com/clouddea/guga-noise-detector" target="_blank" rel="noopener" style="color:var(--accent-ink);font-weight:800">GitHub 仓库</a> 自行编译。
+        </p>
+      </div>
+      <div class="dl-right">
+        <img src="assets/gg-happy.png" alt="咕嗄">
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-row">
+      <div>咕嗄声音检测 · GugaNoiseDetector · Cloudea Studio</div>
+      <div class="foot-links">
+        <a href="https://github.com/clouddea/guga-noise-detector" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/clouddea/guga-noise-detector/blob/main/README.md" target="_blank" rel="noopener">README</a>
+        <a href="https://github.com/clouddea/guga-noise-detector/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>
+      </div>
+    </div>
+    <p class="disclaimer">
+      <b>关于读数：</b>分贝值由手机麦克风估算，未做过声学校准，误差可达 ±10 dB，仅供日常参考，不能用于法定噪声测量或职业健康评估。<br>
+      <b>关于角色：</b>咕嗄的形象参考了网络流行的企鹅二创风格，本页与 App 内使用的角色素材版权存在争议，仅作个人演示用途；如需商用请替换为原创形象。
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>

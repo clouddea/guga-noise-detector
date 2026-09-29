@@ -16,3 +16,9 @@ local.properties
 
 # Claude Code 本地会话产物（预览服务器脚本、本地设置等）
 .claude/
+
+# release 签名材料 —— 切勿入库
+keystore.properties
+keystore/
+*.jks
+*.keystore

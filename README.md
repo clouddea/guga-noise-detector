@@ -26,6 +26,35 @@ export JAVA_HOME="/c/Program Files/Android/Android Studio/jbr"
 
 Windows 下若 Git Bash 因路径空格出问题，可改用 `cmd //c gradlew.bat :app:assembleDebug`。
 
+### 打正式包（release，已签名）
+
+release 包用 `keystore.properties` 里配置的密钥签名，该文件与 `keystore/` 目录**都不入库**（见 `.gitignore`）：
+
+```bash
+./gradlew :app:assembleRelease
+```
+
+产物：`app/build/outputs/apk/release/app-release.apk`
+
+> ⚠️ `keystore/guga-release.jks` 和 `keystore.properties` 里的密码**务必自行备份**。
+> 丢失后无法再给同一个 App 发布更新（签名不一致，用户必须卸载重装）。
+
+## 宣传页（GitHub Pages）
+
+`docs/` 目录是 GitHub Pages 的发布源：
+
+```
+docs/
+├── index.html                          # 宣传页
+├── .nojekyll                           # 关掉 Jekyll 处理
+├── assets/                             # 角色图 + 四档真机截图
+└── guga-noise-detector-v1.0.0.apk      # 下载用的安装包
+```
+
+访问地址：https://clouddea.github.io/guga-noise-detector/
+
+发新版本时：重新 `assembleRelease`，把 APK 复制进 `docs/`（改好文件名），同步更新 `index.html` 里的下载链接和版本号。
+
 ## 技术要点
 
 - **AGP 9.3.1 / Kotlin 2.2.10 / Compose BOM 2026.02.01**，compileSdk & targetSdk 37，minSdk 24，Java 17。
