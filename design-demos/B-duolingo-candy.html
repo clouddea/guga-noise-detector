@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>咕嗄声音检测 · 方向 B · Duolingo 糖果风</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --green:#58CC02; --green-d:#46A302; --green-s:#EAFBD8;
+  --blue:#1CB0F6;  --blue-d:#1899D6;  --blue-s:#DDF4FF;
+  --yellow:#FFC800;--yellow-d:#E0AF00;--yellow-s:#FFF6D6;
+  --orange:#FF9600;--orange-d:#E08600;--orange-s:#FFEED2;
+  --red:#FF4B4B;   --red-d:#E03F3F;   --red-s:#FFDFE0;
+  --ink:#3C3C3C; --ink2:#8A8A8A; --ink3:#B9B9B9;
+  --line:#EDEDED; --soft:#F7F7F7; --white:#fff;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;}
+body{
+  background:#EFEFEF;
+  font-family:'Baloo 2','Nunito','PingFang SC','Hiragino Sans GB','Microsoft YaHei',system-ui,-apple-system,sans-serif;
+  color:var(--ink); padding:34px 22px 70px;
+  -webkit-font-smoothing:antialiased;
+}
+.stage-head{max-width:1200px;margin:0 auto 34px;text-align:center;}
+.stage-head h1{font-size:23px;font-weight:800;margin:0 0 7px;letter-spacing:.2px;}
+.stage-head .sub{font-size:13px;color:var(--ink2);font-style:italic;margin:0;}
+.stage-head .tags{margin-top:12px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
+.stage-head .tags span{font-size:11px;font-weight:700;padding:4px 11px;border-radius:999px;background:#fff;color:#7A7A7A;box-shadow:0 2px 0 #E0E0E0;}
+.stage{display:flex;flex-wrap:wrap;gap:48px 40px;justify-content:center;align-items:flex-start;max-width:1900px;margin:0 auto;}
+.phone-wrap{width:432px;}
+.phone-cap{font-style:italic;font-size:12.5px;color:#8C8C8C;text-align:center;margin-bottom:11px;letter-spacing:.2px;}
+.device{width:432px;background:#1a1a1a;padding:10px;border-radius:44px;box-shadow:0 0 0 2px #2a2a2a,0 20px 60px rgba(0,0,0,.3);}
+.screen{position:relative;width:412px;height:892px;background:#fff;border-radius:36px;overflow:hidden;}
+
+/* ---------- status bar ---------- */
+.statusbar{position:absolute;top:0;left:0;right:0;height:32px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 18px;font-size:12.5px;font-weight:800;color:#141414;z-index:30;letter-spacing:.2px;}
+.sb-notch{position:absolute;left:50%;top:10px;transform:translateX(-50%);width:14px;height:14px;border-radius:50%;background:#0b0b0b;}
+.sb-icons{display:flex;align-items:center;gap:5px;}
+.sb-icons svg{display:block;}
+
+/* ---------- content ---------- */
+.content{position:absolute;top:32px;left:0;right:0;bottom:24px;display:flex;flex-direction:column;background:#fff;}
+.app-body{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:11px 14px 4px;}
+.app-body::-webkit-scrollbar{width:0;height:0;}
+
+/* ---------- bottom nav ---------- */
+.app-nav{flex:0 0 66px;display:flex;align-items:center;gap:6px;padding:0 14px 6px;border-top:1.5px solid var(--line);background:#fff;}
+.navitem{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+  padding:6px 0 5px;border-radius:16px;color:#BFBFBF;cursor:pointer;user-select:none;transition:background .16s,color .16s;}
+.navitem span{font-size:11px;font-weight:800;letter-spacing:.3px;}
+.navitem.active{color:var(--green);background:var(--green-s);}
+.navitem:active{transform:scale(.96);}
+
+.gesture{position:absolute;left:50%;bottom:11px;transform:translateX(-50%);width:100px;height:4px;border-radius:2px;background:#121212;opacity:.7;}
+
+/* ---------- shared bits ---------- */
+.card{background:#fff;border:2px solid var(--line);border-radius:22px;}
+.btn3d{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;border:none;cursor:pointer;
+  font-family:inherit;font-weight:800;font-size:17px;letter-spacing:.4px;color:#fff;background:var(--green);
+  border-radius:18px;padding:15px 18px;box-shadow:0 4px 0 var(--green-d);
+  transition:transform .07s ease,box-shadow .07s ease;user-select:none;}
+.btn3d:active{transform:translateY(4px);box-shadow:0 0 0 0 rgba(0,0,0,0);}
+.btn3d .pen{flex:0 0 auto;margin-top:-2px;}
+.btn3d.alt{background:var(--blue);box-shadow:0 4px 0 var(--blue-d);}
+
+/* ---------- detect page ---------- */
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px;}
+.brand{display:flex;align-items:center;gap:9px;}
+.brand-ava{width:38px;height:38px;border-radius:13px;background:var(--green-s);display:flex;align-items:center;justify-content:center;overflow:hidden;}
+.brand-name{font-size:16.5px;font-weight:800;line-height:1.1;letter-spacing:.2px;}
+.brand-sub{font-size:10px;font-weight:700;color:var(--ink3);letter-spacing:.5px;}
+.livepill{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800;padding:6px 11px;border-radius:999px;
+  background:var(--red-s);color:var(--red);white-space:nowrap;}
+.livepill.off{background:#F0F0F0;color:#A0A0A0;}
+.livepill .dot{width:7px;height:7px;border-radius:50%;background:currentColor;animation:pulse 1.2s infinite;}
+.livepill.off .dot{animation:none;}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.8)}}
+
+.locbar{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#6E6E6E;
+  background:var(--soft);border-radius:12px;padding:7px 11px;margin-bottom:11px;}
+.locbar svg{flex:0 0 auto;}
+
+.gaugecard{padding:8px 10px 12px;margin-bottom:10px;}
+.gaugewrap{position:relative;width:200px;height:200px;margin:0 auto;}
+.gaugewrap svg{display:block;width:200px;height:200px;}
+.gauge-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;}
+.gauge-db{display:flex;align-items:baseline;gap:3px;line-height:1;}
+.gauge-db b{font-size:44px;font-weight:800;letter-spacing:-1.5px;font-variant-numeric:tabular-nums;}
+.gauge-db i{font-style:normal;font-size:15px;font-weight:800;color:var(--ink3);}
+.levelpill{margin-top:9px;font-size:12.5px;font-weight:800;color:#fff;padding:4px 14px;border-radius:999px;letter-spacing:1px;
+  box-shadow:0 3px 0 rgba(0,0,0,.13);}
+
+.bubble{display:flex;align-items:center;gap:10px;background:var(--green-s);border-radius:20px;padding:9px 13px 9px 10px;margin-bottom:11px;}
+.bubble-pen{flex:0 0 auto;width:42px;height:46px;display:flex;align-items:center;justify-content:center;}
+.bubble-k{font-size:10.5px;font-weight:800;color:var(--green-d);letter-spacing:.6px;}
+.bubble-m{font-size:13.5px;font-weight:800;color:#3E6B14;line-height:1.25;margin-top:1px;}
+
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:11px;}
+.stat{border-radius:18px;padding:8px 12px 9px;display:flex;flex-direction:column;gap:1px;}
+.stat b{font-size:21px;font-weight:800;line-height:1.05;font-variant-numeric:tabular-nums;letter-spacing:-.3px;}
+.stat b i{font-style:normal;font-size:11px;font-weight:800;margin-left:2px;}
+.stat span{font-size:10.5px;font-weight:800;letter-spacing:.4px;}
+.stat .bar{height:5px;border-radius:3px;background:rgba(0,0,0,.08);margin-top:5px;overflow:hidden;}
+.stat .bar i{display:block;height:100%;border-radius:3px;}
+
+.wavecard{padding:10px 12px 9px;margin-bottom:11px;}
+.card-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:7px;}
+.card-head b{font-size:12.5px;font-weight:800;letter-spacing:.3px;}
+.card-head span{font-size:10.5px;font-weight:700;color:var(--ink3);}
+
+/* ---------- history list ---------- */
+.pagehead{display:flex;align-items:flex-end;justify-content:space-between;margin:2px 0 10px;}
+.pagehead h2{font-size:21px;font-weight:800;margin:0;letter-spacing:.2px;}
+.pagehead .cnt{font-size:11.5px;font-weight:800;color:var(--green-d);background:var(--green-s);padding:4px 10px;border-radius:999px;}
+.sumstrip{display:flex;gap:8px;margin-bottom:12px;}
+.sumstrip div{flex:1;background:var(--soft);border-radius:14px;padding:7px 9px;}
+.sumstrip b{display:block;font-size:15px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.15;}
+.sumstrip span{font-size:10px;font-weight:700;color:var(--ink2);}
+
+.hcard{display:flex;gap:11px;align-items:stretch;border:2px solid var(--line);border-radius:20px;padding:10px 11px;margin-bottom:9px;
+  cursor:pointer;transition:transform .1s ease,border-color .15s ease,box-shadow .15s ease;background:#fff;}
+.hcard:hover{border-color:#DFDFDF;box-shadow:0 5px 0 #EFEFEF;}
+.hcard:active{transform:translateY(3px);box-shadow:none;}
+.hbadge{flex:0 0 52px;border-radius:15px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  color:#fff;font-weight:800;line-height:1;}
+.hbadge b{font-size:17px;font-variant-numeric:tabular-nums;letter-spacing:-.5px;}
+.hbadge i{font-style:normal;font-size:9px;font-weight:800;opacity:.85;margin-top:2px;}
+.hmain{flex:1;min-width:0;}
+.htop{display:flex;align-items:baseline;justify-content:space-between;gap:8px;}
+.hplace{font-size:14.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hpeak{font-size:10.5px;font-weight:800;white-space:nowrap;color:var(--ink2);}
+.hmeta{font-size:10.5px;font-weight:700;color:var(--ink2);margin:2px 0 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hwave{height:30px;}
+.harrow{display:flex;align-items:center;color:#CFCFCF;}
+
+/* ---------- detail ---------- */
+.dtop{display:flex;align-items:center;gap:11px;margin:2px 0 10px;}
+.iconbtn{width:38px;height:38px;flex:0 0 38px;border-radius:13px;background:var(--soft);display:flex;align-items:center;justify-content:center;
+  cursor:pointer;border:none;padding:0;color:var(--ink);transition:transform .07s;}
+.iconbtn:active{transform:scale(.94);}
+.dtop h2{font-size:18px;font-weight:800;margin:0;flex:1;}
+.hero{border-radius:22px;padding:12px 16px;color:#fff;margin-bottom:10px;position:relative;overflow:hidden;}
+.hero .hplace2{font-size:20px;font-weight:800;letter-spacing:.2px;}
+.hero .hrange{font-size:11.5px;font-weight:700;opacity:.92;margin-top:3px;}
+.hero .htags{display:flex;gap:7px;margin-top:9px;}
+.hero .htags span{font-size:11px;font-weight:800;background:rgba(255,255,255,.24);padding:4px 10px;border-radius:999px;}
+.hero-pen{position:absolute;right:12px;bottom:-6px;opacity:.9;}
+
+.dgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:9px;}
+.dcell{border-radius:16px;padding:7px 11px;background:var(--soft);}
+.dcell b{display:block;font-size:19px;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums;}
+.dcell b i{font-style:normal;font-size:10.5px;color:var(--ink3);font-weight:800;margin-left:2px;}
+.dcell span{font-size:10.5px;font-weight:700;color:var(--ink2);}
+
+.axis{display:flex;justify-content:space-between;font-size:10px;font-weight:700;color:var(--ink3);margin-top:5px;}
+
+.infolist{border:2px solid var(--line);border-radius:20px;overflow:hidden;margin-bottom:10px;}
+.inforow{display:flex;align-items:center;justify-content:space-between;padding:8px 13px;border-bottom:1.5px solid var(--line);font-size:12.5px;}
+.inforow:last-child{border-bottom:none;}
+.inforow .k{font-weight:700;color:var(--ink2);}
+.inforow .v{font-weight:800;font-variant-numeric:tabular-nums;}
+
+/* ---------- empty state ---------- */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:34px 24px;height:100%;}
+.empty .epen{margin-bottom:8px;}
+.empty h3{font-size:18px;font-weight:800;margin:0 0 6px;}
+.empty p{font-size:12.5px;font-weight:700;color:var(--ink2);margin:0 0 18px;line-height:1.5;max-width:250px;}
+.empty .btn3d{width:auto;padding:13px 22px;font-size:15px;}
+
+/* ---------- about ---------- */
+.about{display:flex;flex-direction:column;align-items:center;text-align:center;padding-top:8px;}
+.about .logo{width:132px;height:132px;border-radius:44px;background:var(--green-s);display:flex;align-items:center;justify-content:center;margin-bottom:13px;}
+.about h2{font-size:24px;font-weight:800;margin:0;letter-spacing:.3px;}
+.about .en{font-size:12px;font-weight:800;color:var(--ink3);letter-spacing:1.4px;margin-top:2px;}
+.verpill{margin-top:10px;font-size:12px;font-weight:800;color:#fff;background:var(--green);padding:5px 14px;border-radius:999px;box-shadow:0 3px 0 var(--green-d);}
+.desc{font-size:12.5px;font-weight:700;color:#6E6E6E;line-height:1.75;margin:15px 4px 15px;text-align:left;background:var(--soft);border-radius:18px;padding:13px 15px;}
+.about .infolist{width:100%;text-align:left;}
+.gh{width:100%;}
+.gh .ghurl{font-size:11px;font-weight:800;opacity:.9;letter-spacing:.1px;}
+.foot{font-size:10.5px;font-weight:700;color:var(--ink3);margin-top:14px;line-height:1.6;}
+
+/* ---------- penguin ---------- */
+.peng{display:block;}
+</style>
+</head>
+<body>
+
+<div class="stage-head">
+  <h1>咕嗄声音检测 GugaNoiseDetector · 设计方向 B</h1>
+  <p class="sub">现实参照迁移：Duolingo 设计语言（糖果高饱和 + 超粗圆体 + 3D 凸起按钮 + 吉祥物到处出没）</p>
+  <div class="tags"><span>单 accent：咕嗄绿 #58CC02</span><span>Baloo 2 / Nunito 900 圆体</span><span>box-shadow:0 4px 0 硬底按钮</span><span>6 台可交互真机框</span></div>
+</div>
+
+<div class="stage" id="stage"></div>
+
+<script>
+/* =========================================================
+   咕嗄声音检测 · 方向 B · Duolingo Candy
+   单文件原生 JS 迷你状态机，file:// 直接打开
+   ========================================================= */
+
+/* ---------------- utils ---------------- */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+function fx(n,d){return Number(n).toFixed(d===undefined?1:d);}
+
+/* 等级阈值：安静 <45 / 正常 45-60 / 嘈杂 60-80 / 震耳 >=80 */
+var LEVELS=[
+  {max:45 ,name:'安静',c:'#58CC02',d:'#46A302',s:'#EAFBD8',tip:'今天环境很安静，棒！'},
+  {max:60 ,name:'正常',c:'#1CB0F6',d:'#1899D6',s:'#DDF4FF',tip:'刚刚好，继续保持～'},
+  {max:80 ,name:'嘈杂',c:'#FF9600',d:'#E08600',s:'#FFEED2',tip:'有点吵，可以戴上耳塞'},
+  {max:999,name:'震耳',c:'#FF4B4B',d:'#E03F3F',s:'#FFDFE0',tip:'太吵啦！注意保护听力'}
+];
+function lvOf(db){for(var i=0;i<LEVELS.length;i++){if(db<LEVELS[i].max)return LEVELS[i];}return LEVELS[3];}
+
+/* ---------------- 原创扁平企鹅「咕嗄」 ---------------- */
+function peng(size,opt){
+  opt=opt||{};
+  var hp=opt.hp!==false;
+  var s=size, h=Math.round(size*1.15);
+  return '<svg class="peng" width="'+s+'" height="'+h+'" viewBox="0 0 120 138" fill="none" xmlns="http://www.w3.org/2000/svg">'
+    +'<rect x="33" y="118" width="25" height="15" rx="7.5" fill="#FF9F1C"/>'
+    +'<rect x="62" y="118" width="25" height="15" rx="7.5" fill="#FF9F1C"/>'
+    +'<ellipse cx="60" cy="72" rx="45" ry="50" fill="#3B3B3B"/>'
+    +'<ellipse cx="34" cy="74" rx="10" ry="24" fill="#2E2E2E"/>'
+    +'<ellipse cx="86" cy="74" rx="10" ry="24" fill="#2E2E2E"/>'
+    +'<ellipse cx="60" cy="90" rx="29" ry="31" fill="#FFFFFF"/>'
+    +'<ellipse cx="60" cy="53" rx="31" ry="29" fill="#FFFFFF"/>'
+    +'<circle cx="47" cy="51" r="6.6" fill="#2B2B2B"/>'
+    +'<circle cx="73" cy="51" r="6.6" fill="#2B2B2B"/>'
+    +'<circle cx="49.4" cy="48.3" r="2.3" fill="#FFFFFF"/>'
+    +'<circle cx="75.4" cy="48.3" r="2.3" fill="#FFFFFF"/>'
+    +'<path d="M60 57 C66.5 57 71 61.4 71 66.4 C71 71 66.5 75 60 75 C53.5 75 49 71 49 66.4 C49 61.4 53.5 57 60 57 Z" fill="#FF9F1C"/>'
+    +(hp
+      ? '<path d="M16 66 A44 44 0 0 1 104 66" stroke="#1CB0F6" stroke-width="7" stroke-linecap="round"/>'
+        +'<rect x="5" y="54" width="22" height="27" rx="11" fill="#1CB0F6"/>'
+        +'<rect x="93" y="54" width="22" height="27" rx="11" fill="#1CB0F6"/>'
+      : '')
+    +'</svg>';
+}
+
+/* ---------------- 圆形仪表 ---------------- */
+var G={cx:120,cy:118,r:82,a0:135,sweep:270};
+function gp(r,a){var t=a*Math.PI/180;return [G.cx+r*Math.cos(t),G.cy+r*Math.sin(t)];}
+function arcD(r,a1,a2){
+  var p1=gp(r,a1),p2=gp(r,a2);
+  var large=(a2-a1)>180?1:0;
+  return 'M'+fx(p1[0],2)+' '+fx(p1[1],2)+' A'+r+' '+r+' 0 '+large+' 1 '+fx(p2[0],2)+' '+fx(p2[1],2);
+}
+function dbToAngle(db){return G.a0+G.sweep*clamp((db-30)/60,0,1);}
+
+function gaugeHTML(db){
+  var L=lvOf(db), i, d, a, p1, p2, isMajor, r1, r2, c;
+  var ticks='', labels='';
+  for(d=30; d<=90; d+=5){
+    a=dbToAngle(d); isMajor=(d%10===0);
+    r1=G.r+9; r2=isMajor?G.r+19:G.r+14;
+    p1=gp(r1,a); p2=gp(r2,a);
+    c=lvOf(d===90?89:d).c;
+    ticks+='<line x1="'+fx(p1[0])+'" y1="'+fx(p1[1])+'" x2="'+fx(p2[0])+'" y2="'+fx(p2[1])+'" stroke="'+c
+      +'" stroke-width="'+(isMajor?3.2:2.2)+'" stroke-linecap="round" opacity="'+(isMajor?1:.5)+'"/>';
+  }
+  for(d=30; d<=90; d+=10){
+    a=dbToAngle(d); p1=gp(G.r+32,a);
+    labels+='<text x="'+fx(p1[0])+'" y="'+fx(p1[1]+4)+'" text-anchor="middle" font-size="12" font-weight="800" fill="#C2C2C2">'+d+'</text>';
+  }
+  var f=clamp((db-30)/60,0,1);
+  var na=dbToAngle(db);
+  var track=arcD(G.r,G.a0,G.a0+G.sweep);
+  return '<svg viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg">'
+    +'<path d="'+track+'" fill="none" stroke="#F0F0F0" stroke-width="14" stroke-linecap="round"/>'
+    +'<path class="g-prog" d="'+track+'" fill="none" stroke="'+L.c+'" stroke-width="14" stroke-linecap="round" pathLength="100" '
+      +'stroke-dasharray="'+fx(f*100,2)+' 100" style="transition:stroke-dasharray .55s cubic-bezier(.34,1.3,.64,1),stroke .3s"/>'
+    +ticks+labels
+    +'<g class="g-needle" style="transform-origin:120px 118px;transform:rotate('+fx(na-270)+'deg);'
+      +'transition:transform .55s cubic-bezier(.34,1.3,.64,1)">'
+      +'<line x1="120" y1="118" x2="120" y2="'+(118-(G.r-10))+'" stroke="#3C3C3C" stroke-width="5" stroke-linecap="round"/>'
+      +'<circle cx="120" cy="'+(118-(G.r-10))+'" r="5.4" fill="'+L.c+'" stroke="#FFFFFF" stroke-width="2.4"/>'
+    +'</g>'
+    +'<circle cx="120" cy="118" r="8.5" fill="#3C3C3C"/><circle cx="120" cy="118" r="3.6" fill="#FFFFFF"/>'
+    +'</svg>';
+}
+function updateGauge(wrap,db){
+  var L=lvOf(db), f=clamp((db-30)/60,0,1), na=dbToAngle(db);
+  var prog=wrap.querySelector('.g-prog');
+  if(prog){prog.setAttribute('stroke',L.c);prog.setAttribute('stroke-dasharray',fx(f*100,2)+' 100');}
+  var nd=wrap.querySelector('.g-needle');
+  if(nd){
+    nd.style.transform='rotate('+fx(na-270)+'deg)';
+    var tip=nd.querySelector('circle');
+    if(tip) tip.setAttribute('fill',L.c);
+  }
+}
+
+/* ---------------- 波形 ---------------- */
+var uid=0;
+function smoothPath(pts){
+  var d='M'+fx(pts[0][0])+' '+fx(pts[0][1]);
+  for(var i=0;i<pts.length-1;i++){
+    var p0=pts[i-1]||pts[i], p1=pts[i], p2=pts[i+1], p3=pts[i+2]||pts[i+1];
+    var c1x=p1[0]+(p2[0]-p0[0])/6, c1y=p1[1]+(p2[1]-p0[1])/6;
+    var c2x=p2[0]-(p3[0]-p1[0])/6, c2y=p2[1]-(p3[1]-p1[1])/6;
+    d+=' C'+fx(c1x)+' '+fx(c1y)+' '+fx(c2x)+' '+fx(c2y)+' '+fx(p2[0])+' '+fx(p2[1]);
+  }
+  return d;
+}
+function waveSVG(vals,color,w,h,opt){
+  opt=opt||{};
+  var lo=(opt.lo===undefined)?24:opt.lo, hi=(opt.hi===undefined)?96:opt.hi;
+  var n=vals.length, i;
+  var pts=[];
+  for(i=0;i<n;i++){
+    pts.push([i*(w/(n-1)), h-((clamp(vals[i],lo,hi)-lo)/(hi-lo))*h]);
+  }
+  var line=smoothPath(pts);
+  var area=line+' L'+w+' '+h+' L0 '+h+' Z';
+  var gid='wg'+(uid++);
+  var grid='';
+  if(opt.grid){
+    for(i=0;i<opt.grid.length;i++){
+      var gy=fx(h-((opt.grid[i]-lo)/(hi-lo))*h);
+      grid+='<line x1="0" y1="'+gy+'" x2="'+w+'" y2="'+gy+'" stroke="#E9E9E9" stroke-width="1" stroke-dasharray="4 5"/>';
+    }
+  }
+  return '<svg viewBox="0 0 '+w+' '+h+'" width="100%" height="'+h+'" preserveAspectRatio="none" style="display:block">'
+    +'<defs><linearGradient id="'+gid+'" x1="0" y1="0" x2="0" y2="1">'
+      +'<stop offset="0" stop-color="'+color+'" stop-opacity=".30"/>'
+      +'<stop offset="1" stop-color="'+color+'" stop-opacity=".03"/></linearGradient></defs>'
+    +grid
+    +'<path d="'+area+'" fill="url(#'+gid+')"/>'
+    +'<path d="'+line+'" fill="none" stroke="'+color+'" stroke-width="'+(opt.sw||2.6)
+      +'" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>'
+    +'</svg>';
+}
+/* 由会话记录生成平滑波形（确定性，刷新不变） */
+function waveFor(rec,n){
+  n=n||64;
+  var r=mulberry32(rec.seed*7919+13), out=[], i, t, v;
+  var mid=(rec.min+rec.max)/2, amp=(rec.max-rec.min)/2;
+  for(i=0;i<n;i++){
+    t=i/(n-1);
+    v=mid
+      +amp*0.58*Math.sin(t*Math.PI*2*1.7+rec.seed)
+      +amp*0.26*Math.sin(t*Math.PI*2*4.6+rec.seed*2.3)
+      +amp*0.34*(r()-0.5);
+    out.push(clamp(v,rec.min,rec.max));
+  }
+  return out;
+}
+
+/* ---------------- 演示数据 ---------------- */
+var HISTORY=[
+  {id:0,place:'家 · 客厅',      range:'昨夜 23:10 – 23:25',  dur:'15 分钟', avg:38.2, min:29.4, med:37.6, max:52.1, pts:900,  seed:11, name:'昨夜 23:10'},
+  {id:1,place:'地铁 2 号线',    range:'昨天 08:12 – 08:20',  dur:'8 分钟',  avg:72.4, min:55.0, med:71.8, max:94.6, pts:480,  seed:22, name:'昨天 08:12'},
+  {id:2,place:'办公室 · 工位',  range:'昨天 14:30 – 15:00',  dur:'30 分钟', avg:46.8, min:31.2, med:44.5, max:78.9, pts:1800, seed:33, name:'昨天 14:30'},
+  {id:3,place:'小区 · 花园',    range:'前天 17:40 – 17:55',  dur:'15 分钟', avg:52.3, min:38.7, med:51.0, max:69.2, pts:900,  seed:44, name:'前天 17:40'},
+  {id:4,place:'家 · 卧室',      range:'9月24日 22:50 – 07:00',dur:'8 小时', avg:31.2, min:26.8, med:30.9, max:44.7, pts:28800,seed:55, name:'9月24日 22:50'}
+];
+var HOME_STATS={min:31.2,avg:46.8,med:44.5,max:78.9};
+
+/* 实时波形滚动缓冲：30–80 dB 平滑波动 */
+var liveBuf=[], _r=mulberry32(20260929), _v=44;
+(function(){
+  for(var i=0;i<56;i++){
+    _v+=(_r()-0.5)*16; _v+=(44-_v)*0.1;
+    liveBuf.push(clamp(_v,31,79));
+  }
+})();
+function stepLive(){
+  var last=liveBuf[liveBuf.length-1];
+  var nv=last+(_r()-0.5)*15+(46.8-last)*0.09;
+  liveBuf.push(clamp(nv,30.6,79.4));
+  liveBuf.shift();
+}
+
+/* ---------------- 图标 ---------------- */
+var ICO={
+  pin:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#58CC02" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/></svg>',
+  chev:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>',
+  back:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+  play:'<svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.8v14.4c0 .8.9 1.3 1.6.9l11.2-7.2c.6-.4.6-1.4 0-1.8L8.6 3.9C7.9 3.5 7 4 7 4.8z"/></svg>',
+  pause:'<svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4.5" width="4.6" height="15" rx="2.2"/><rect x="13.4" y="4.5" width="4.6" height="15" rx="2.2"/></svg>',
+  gh:'<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.6 2 12.3c0 4.5 2.9 8.4 6.8 9.7.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.4-3.4-1.4-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.6 1.1 1.6 1.1.9 1.6 2.4 1.1 3 .9.1-.7.4-1.1.7-1.4-2.2-.3-4.6-1.1-4.6-5.1 0-1.1.4-2 1-2.7-.1-.3-.4-1.3.1-2.7 0 0 .8-.3 2.8 1a9.3 9.3 0 0 1 5 0c1.9-1.3 2.7-1 2.7-1 .5 1.4.2 2.4.1 2.7.6.7 1 1.6 1 2.7 0 4-2.4 4.8-4.6 5.1.4.3.8 1 .8 2.1v3.1c0 .3.2.6.7.5A10.3 10.3 0 0 0 22 12.3C22 6.6 17.5 2 12 2z"/></svg>',
+  dl:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v10m0 0l-4-4m4 4l4-4M5 18h14"/></svg>'
+};
+function navHTML(active){
+  var items=[
+    ['detect','检测','<path d="M3.5 14.5v-4M8 14.5V6M12.5 14.5V9M17 14.5v-9M20.5 14.5v-6"/>'],
+    ['history','历史','<circle cx="12" cy="12" r="8.6"/><path d="M12 7.2V12l3.2 2"/>'],
+    ['about','关于','<circle cx="12" cy="12" r="8.6"/><path d="M12 11.2v5.4M12 7.7v.02"/>']
+  ];
+  var out='';
+  for(var i=0;i<items.length;i++){
+    var it=items[i];
+    out+='<div class="navitem'+(active===it[0]?' active':'')+'" data-tab="'+it[0]+'">'
+      +'<svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'+it[2]+'</svg>'
+      +'<span>'+it[1]+'</span></div>';
+  }
+  return out;
+}
+
+/* ---------------- 屏幕：检测主页 ---------------- */
+function detectHTML(s){
+  var L=lvOf(s.db);
+  var st=HOME_STATS;
+  var maxRef=95;
+  function pct(v){return fx(clamp((v-20)/(maxRef-20),0.05,1)*100)+'%';}
+  var stats=[
+    {k:'最小值',v:st.min,c:'var(--blue)',bg:'var(--blue-s)',p:pct(st.min)},
+    {k:'平均值',v:st.avg,c:'var(--green)',bg:'var(--green-s)',p:pct(st.avg)},
+    {k:'中位数',v:st.med,c:'var(--orange)',bg:'var(--orange-s)',p:pct(st.med)},
+    {k:'最大值',v:st.max,c:'var(--red)',bg:'var(--red-s)',p:pct(st.max)}
+  ];
+  var statsH='';
+  for(var i=0;i<stats.length;i++){
+    var t=stats[i];
+    statsH+='<div class="stat" style="background:'+t.bg+'">'
+      +'<b style="color:'+t.c+'">'+fx(t.v)+'<i style="color:'+t.c+';opacity:.65">dB</i></b>'
+      +'<span style="color:'+t.c+'">'+t.k+'</span>'
+      +'<div class="bar"><i style="width:'+t.p+';background:'+t.c+'"></i></div></div>';
+  }
+  var runningTxt=s.running?'暂停检测':'开始检测';
+  var btnIco=s.running?ICO.pause:ICO.play;
+  return ''
+  +'<div class="topbar">'
+    +'<div class="brand">'
+      +'<div class="brand-ava">'+peng(31)+'</div>'
+      +'<div><div class="brand-name">咕嗄声音检测</div><div class="brand-sub">GUGA NOISE DETECTOR</div></div>'
+    +'</div>'
+    +'<div class="livepill'+(s.running?'':' off')+'"><span class="dot"></span>'+(s.running?'实时检测中':'已暂停')+'</div>'
+  +'</div>'
+  +'<div class="locbar">'+ICO.pin+'<span>北京市朝阳区 · 39.9°N 116.4°E</span></div>'
+
+  +'<div class="card gaugecard"><div class="gaugewrap js-gauge">'+gaugeHTML(s.db)
+    +'<div class="gauge-center">'
+      +'<div class="gauge-db"><b class="js-db" style="color:#3C3C3C">'+fx(s.db)+'</b><i>dB</i></div>'
+      +'<div class="levelpill js-level" style="background:'+L.c+'">'+L.name+'</div>'
+    +'</div>'
+  +'</div></div>'
+
+  +'<div class="bubble">'
+    +'<div class="bubble-pen">'+peng(40)+'</div>'
+    +'<div style="flex:1;min-width:0">'
+      +'<div class="bubble-k">咕嗄提醒</div>'
+      +'<div class="bubble-m js-enc">'+L.tip+'</div>'
+    +'</div>'
+  +'</div>'
+
+  +'<div class="stats">'+statsH+'</div>'
+
+  +'<div class="card wavecard">'
+    +'<div class="card-head"><b>实时波形</b><span>近 30 秒 · 30–80 dB</span></div>'
+    +'<div class="js-wave">'+waveSVG(liveBuf.slice(-42),L.c,340,78,{lo:24,hi:92})+'</div>'
+  +'</div>'
+
+  +'<button class="btn3d js-toggle">'+btnIco+'<span>'+runningTxt+'</span><span class="pen">'+peng(21)+'</span></button>';
+}
+
+/* ---------------- 屏幕：历史列表 ---------------- */
+function historyListHTML(s){
+  var list=s.empty?[]:HISTORY;
+  var head=''
+  +'<div class="pagehead"><h2>检测历史</h2><span class="cnt">共 '+list.length+' 条</span></div>';
+  if(!list.length){
+    return head+'<div class="empty" style="height:auto;padding-top:60px">'
+      +'<div class="epen">'+peng(112)+'</div>'
+      +'<h3>还没有检测记录</h3>'
+      +'<p>点一下开始检测，咕嗄会帮你把每次声音都记下来～</p>'
+      +'<button class="btn3d js-go">'+ICO.play+'<span>去检测</span></button>'
+    +'</div>';
+  }
+  var sum='<div class="sumstrip">'
+    +'<div><b style="color:var(--red)">94.6<span style="font-size:10px;color:#B9B9B9"> dB</span></b><span>本周最高</span></div>'
+    +'<div><b style="color:var(--green)">46.4<span style="font-size:10px;color:#B9B9B9"> dB</span></b><span>本周平均</span></div>'
+    +'<div><b style="color:var(--blue)">5<span style="font-size:10px;color:#B9B9B9"> 次</span></b><span>本周记录</span></div>'
+  +'</div>';
+  var cards='';
+  for(var i=0;i<list.length;i++){
+    var r=list[i], L=lvOf(r.avg);
+    cards+='<div class="hcard" data-id="'+r.id+'">'
+      +'<div class="hbadge" style="background:'+L.c+';box-shadow:0 3px 0 '+L.d+'">'
+        +'<b>'+fx(r.avg)+'</b><i>dB</i></div>'
+      +'<div class="hmain">'
+        +'<div class="htop"><span class="hplace">'+r.place+'</span><span class="hpeak">峰值 '+fx(r.max)+'</span></div>'
+        +'<div class="hmeta">'+r.range+' · '+r.dur+'</div>'
+        +'<div class="hwave">'+waveSVG(waveFor(r,40),L.c,300,30,{lo:22,hi:100,sw:2})+'</div>'
+      +'</div>'
+      +'<div class="harrow">'+ICO.chev+'</div>'
+    +'</div>';
+  }
+  return head+sum+cards;
+}
+
+/* ---------------- 屏幕：历史详情 ---------------- */
+function historyDetailHTML(s){
+  var r=HISTORY[s.selected||0], L=lvOf(r.avg);
+  var cells=[
+    {k:'最小 dB',v:r.min,c:'var(--blue)'},
+    {k:'平均 dB',v:r.avg,c:'var(--green)'},
+    {k:'中位 dB',v:r.med,c:'var(--orange)'},
+    {k:'最大 dB',v:r.max,c:'var(--red)'}
+  ];
+  var cH='';
+  for(var i=0;i<cells.length;i++){
+    cH+='<div class="dcell"><b style="color:'+cells[i].c+'">'+fx(cells[i].v)+'<i>dB</i></b>'
+      +'<span>'+cells[i].k+'</span></div>';
+  }
+  return ''
+  +'<div class="dtop">'
+    +'<button class="iconbtn js-back">'+ICO.back+'</button>'
+    +'<h2>检测详情</h2>'
+    +'<span style="font-size:11px;font-weight:800;color:'+L.c+';background:'+L.s+';padding:5px 11px;border-radius:999px">'+L.name+'</span>'
+  +'</div>'
+
+  +'<div class="hero" style="background:'+L.c+';box-shadow:0 4px 0 '+L.d+'">'
+    +'<div class="hplace2">'+r.place+'</div>'
+    +'<div class="hrange">'+r.range+'</div>'
+    +'<div class="htags"><span>时长 '+r.dur+'</span><span>'+r.pts.toLocaleString()+' 个采样点</span></div>'
+    +'<div class="hero-pen">'+peng(64)+'</div>'
+  +'</div>'
+
+  +'<div class="dgrid">'+cH+'</div>'
+
+  +'<div class="card wavecard">'
+    +'<div class="card-head"><b>完整波形</b><span>y 轴 dB · x 轴 时间</span></div>'
+    +waveSVG(waveFor(r,88),L.c,340,100,{lo:22,hi:100,grid:[40,60,80],sw:2.4})
+    +'<div class="axis"><span>'+fx(r.min)+' dB 起点</span><span>中位 '+fx(r.med)+'</span><span>'+fx(r.max)+' dB 峰值</span></div>'
+  +'</div>'
+
+  +'<div class="infolist">'
+    +'<div class="inforow"><span class="k">地点</span><span class="v">'+r.place+'</span></div>'
+    +'<div class="inforow"><span class="k">时间范围</span><span class="v">'+r.range+'</span></div>'
+    +'<div class="inforow"><span class="k">持续时长</span><span class="v">'+r.dur+'</span></div>'
+    +'<div class="inforow"><span class="k">声音等级</span><span class="v" style="color:'+L.c+'">'+L.name+'</span></div>'
+    +'<div class="inforow"><span class="k">采样率</span><span class="v">48 kHz</span></div>'
+  +'</div>'
+
+  +'<button class="btn3d alt js-back">'+ICO.back+'<span>返回列表</span></button>';
+}
+
+/* ---------------- 屏幕：关于 ---------------- */
+function aboutHTML(){
+  return ''
+  +'<div class="about">'
+    +'<div class="logo">'+peng(86)+'</div>'
+    +'<h2>咕嗄声音检测</h2>'
+    +'<div class="en">GUGA NOISE DETECTOR</div>'
+    +'<div class="verpill">v1.0.0</div>'
+
+    +'<div class="desc">咕嗄是一只爱听声音的小企鹅。它把手机麦克风采集到的声压级换算成分贝（dB），'
+      +'实时告诉你身边的环境有多吵——家里、办公室、马路边还是睡前，随时点开就能看一眼。'
+      +'所有记录只保存在你的手机本地，不上传、不联网。</div>'
+
+    +'<div class="infolist">'
+      +'<div class="inforow"><span class="k">开发者</span><span class="v">cloudea</span></div>'
+      +'<div class="inforow"><span class="k">包名</span><span class="v" style="font-size:11px">com.cloudea.noise.detector</span></div>'
+      +'<div class="inforow"><span class="k">平台</span><span class="v">Android · Jetpack Compose</span></div>'
+      +'<div class="inforow"><span class="k">数据存储</span><span class="v" style="color:var(--green)">仅本地</span></div>'
+    +'</div>'
+
+    +'<button class="btn3d gh js-gh">'+ICO.gh+'<span class="ghurl">github.com/cloudea/GugaNoiseDetector</span></button>'
+
+    +'<div class="foot">© 2026 cloudea · 咕嗄 Guga<br>本页为设计原型，分贝数值为演示数据</div>'
+  +'</div>';
+}
+
+/* ---------------- 迷你状态机 ---------------- */
+function render(el){
+  var s=el._state;
+  var body=el.querySelector('.app-body');
+  var nav=el.querySelector('.app-nav');
+  var html='';
+  if(s.tab==='detect'){ html=detectHTML(s); }
+  else if(s.tab==='history'){ html=(s.selected===null||s.selected===undefined)?historyListHTML(s):historyDetailHTML(s); }
+  else { html=aboutHTML(); }
+  body.innerHTML=html;
+  body.scrollTop=0;
+  nav.innerHTML=navHTML(s.tab);
+}
+
+function refreshLive(el){
+  var s=el._state;
+  if(s.tab!=='detect'||!s.running) return;
+  var body=el.querySelector('.app-body');
+  if(!body) return;
+  stepLive();
+  /* 当前值围绕演示基准 42.3 平滑呼吸式跳动（安静区间内） */
+  s.t=(s.t||0)+1;
+  s.db=42.3+Math.sin(s.t*0.62)*0.85+Math.sin(s.t*1.73+1.1)*0.42+(Math.random()-0.5)*0.26;
+  s.db=clamp(s.db,40.6,44.3);
+  var L=lvOf(s.db);
+
+  var numEl=body.querySelector('.js-db');
+  if(numEl) numEl.textContent=fx(s.db);
+  var w=body.querySelector('.js-gauge');
+  if(w) updateGauge(w,s.db);
+  var lp=body.querySelector('.js-level');
+  if(lp){lp.textContent=L.name;lp.style.background=L.c;}
+  var enc=body.querySelector('.js-enc');
+  if(enc) enc.textContent=L.tip;
+  var wv=body.querySelector('.js-wave');
+  if(wv) wv.innerHTML=waveSVG(liveBuf.slice(-42),L.c,340,78,{lo:24,hi:92});
+}
+
+/* ---------------- 设备装配 ---------------- */
+function statusbarHTML(){
+  return '<div class="statusbar">'
+    +'<span>9:41</span>'
+    +'<div class="sb-notch"></div>'
+    +'<div class="sb-icons">'
+      +'<svg width="17" height="11" viewBox="0 0 17 11" fill="#141414"><rect x="0" y="7.5" width="3" height="3.5" rx="1"/><rect x="4.5" y="5.5" width="3" height="5.5" rx="1"/><rect x="9" y="3" width="3" height="8" rx="1"/><rect x="13.5" y="0.5" width="3" height="10.5" rx="1"/></svg>'
+      +'<svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="#141414" stroke-width="1.7" stroke-linecap="round"><path d="M1 4.2a10.5 10.5 0 0 1 14 0"/><path d="M3.7 7a6.6 6.6 0 0 1 8.6 0"/><path d="M6.4 9.7a2.7 2.7 0 0 1 3.2 0"/></svg>'
+      +'<svg width="25" height="12" viewBox="0 0 25 12"><rect x="0.6" y="0.6" width="20" height="10.8" rx="3.2" fill="none" stroke="#141414" stroke-opacity=".38" stroke-width="1.2"/><rect x="2.4" y="2.4" width="14.5" height="7.2" rx="2" fill="#141414"/><path d="M22.4 4.2v3.6c1-.4 1.6-1 1.6-1.8s-.6-1.4-1.6-1.8z" fill="#141414" fill-opacity=".4"/></svg>'
+    +'</div></div>';
+}
+
+var PHONES=[
+  {cap:'① 检测主页 · 实时检测中', tab:'detect',  running:true,  db:42.3},
+  {cap:'② 检测主页 · 已暂停（点主按钮恢复）', tab:'detect', running:false, db:42.3},
+  {cap:'③ 历史列表（点卡片进详情）', tab:'history', running:false, selected:null},
+  {cap:'④ 历史详情（点返回回列表）', tab:'history', running:false, selected:2},
+  {cap:'⑤ 历史 · 空状态（企鹅出没）', tab:'history', running:false, selected:null, empty:true},
+  {cap:'⑥ 关于（tab 均可切换）', tab:'about',   running:false}
+];
+
+(function build(){
+  var stage=document.getElementById('stage');
+  var frag=document.createDocumentFragment();
+
+  for(var i=0;i<PHONES.length;i++){
+    var cfg=PHONES[i];
+    var wrap=document.createElement('div');
+    wrap.className='phone-wrap';
+    wrap.innerHTML='<div class="phone-cap">'+cfg.cap+'</div>'
+      +'<div class="device"><div class="screen">'
+        +statusbarHTML()
+        +'<div class="content"><div class="app-body"></div><div class="app-nav"></div></div>'
+        +'<div class="gesture"></div>'
+      +'</div></div>';
+    frag.appendChild(wrap);
+
+    var screenEl=wrap.querySelector('.screen');
+    screenEl._state={
+      tab:cfg.tab,
+      running:!!cfg.running,
+      db:cfg.db||42.3,
+      selected:(cfg.selected===undefined?null:cfg.selected),
+      empty:!!cfg.empty,
+      emptyDefault:!!cfg.empty
+    };
+    render(screenEl);
+
+    /* 事件委托：底部 tab / 主按钮 / 列表项 / 返回 / 去检测 / GitHub */
+    (function(el){
+      el.querySelector('.content').addEventListener('click',function(e){
+        var s=el._state;
+        var t;
+        if((t=e.target.closest('.navitem'))){
+          var tab=t.getAttribute('data-tab');
+          if(tab!==s.tab){
+            s.tab=tab;
+            if(tab==='history') s.selected=null;   /* 切回历史 tab 总是回到列表 */
+            render(el);
+          } else if(tab==='history'){
+            s.selected=null; render(el);
+          }
+          return;
+        }
+        if(e.target.closest('.js-toggle')){ s.running=!s.running; render(el); return; }
+        if((t=e.target.closest('.hcard'))){ s.selected=parseInt(t.getAttribute('data-id'),10); render(el); return; }
+        if(e.target.closest('.js-back')){ s.selected=null; render(el); return; }
+        if((t=e.target.closest('.js-go'))){ s.tab='detect'; s.running=true; render(el); return; }
+        if(e.target.closest('.js-gh')){
+          var b=e.target.closest('.js-gh');
+          var old=b.querySelector('.ghurl').textContent;
+          b.querySelector('.ghurl').textContent='github.com/cloudea/GugaNoiseDetector';
+          b.style.background='var(--blue)'; b.style.boxShadow='0 4px 0 var(--blue-d)';
+          setTimeout(function(){b.style.background='';b.style.boxShadow='';},420);
+          return;
+        }
+      });
+    })(screenEl);
+  }
+  stage.appendChild(frag);
+
+  /* 全局心跳：仅驱动“运行中”的检测屏 */
+  var screens=stage.querySelectorAll('.screen');
+  setInterval(function(){
+    for(var k=0;k<screens.length;k++){ refreshLive(screens[k]); }
+  },420);
+})();
+</script>
+</body>
+</html>

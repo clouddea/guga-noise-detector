@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>咕嗄声音检测 · 原型 C · カナヘイ治愈系</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --pink:#F7C9D3;
+    --pink-soft:#FCEFF4;
+    --cream:#FFFDF7;
+    --yellow:#FBE7A1;
+    --blue:#BFE3F0;
+    --mint:#C9E6C0;
+    --accent:#EE8FB4;          /* 唯一 accent：柔粉 */
+    --accent-line:#E57DA5;
+    --accent-ink:#B84A78;      /* accent 文字（4.8:1） */
+    --ink:#463C43;             /* 正文（10.4:1） */
+    --ink-2:#7A6D74;           /* 次级文字（4.9:1） */
+    --line:#F3E9EC;
+    --shell:#1a1a1a;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    background:#F4EEF0;
+    font-family:'Nunito','Varela Round',-apple-system,BlinkMacSystemFont,'PingFang SC','Hiragino Sans GB','Microsoft YaHei UI','Microsoft YaHei',sans-serif;
+    color:var(--ink);
+    padding:40px 30px 90px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .page-head{max-width:1500px;margin:0 auto 30px;text-align:center}
+  .page-head h1{font-size:23px;font-weight:900;margin:0 0 8px;letter-spacing:.6px}
+  .page-head p{margin:0;font-size:13px;color:var(--ink-2);line-height:1.7}
+  .page-head .swatches{display:flex;gap:8px;justify-content:center;margin-top:14px}
+  .page-head .swatches i{width:26px;height:26px;border-radius:50%;display:block;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.06)}
+  .stage{display:flex;flex-wrap:wrap;gap:38px 34px;justify-content:center;align-items:flex-start;max-width:1620px;margin:0 auto}
+  .phone{width:432px}
+  .phone-label{font-style:italic;font-size:12.5px;color:var(--ink-2);text-align:center;margin-bottom:10px;letter-spacing:.4px}
+  .shell{padding:10px;background:#1a1a1a;border-radius:44px;box-shadow:0 0 0 2px #2a2a2a,0 20px 60px rgba(0,0,0,.3)}
+  .screen{position:relative;width:412px;height:892px;border-radius:36px;overflow:hidden;background:var(--cream)}
+
+  /* ---- 状态栏 / 挖孔 / 手势条 ---- */
+  .statusbar{position:absolute;top:0;left:0;right:0;height:32px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;color:var(--ink);z-index:6}
+  .sb-time{font-size:13px;font-weight:800;letter-spacing:.3px}
+  .sb-icons{display:flex;align-items:center;gap:6px}
+  .punch{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:14px;height:14px;border-radius:50%;background:#000;z-index:7}
+  .gesture{position:absolute;bottom:9px;left:50%;transform:translateX(-50%);width:100px;height:4px;border-radius:2px;background:#D9CED3;z-index:8}
+  .app{position:absolute;top:32px;left:0;right:0;bottom:24px;display:flex;flex-direction:column}
+  .scroll{flex:1;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}
+  .scroll::-webkit-scrollbar{display:none}
+  .pad{padding:6px 20px 16px}
+
+  /* ---- 底部导航 ---- */
+  .tabbar{display:flex;align-items:center;justify-content:space-around;height:60px;border-top:1px solid var(--line);background:var(--cream);flex:none}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;padding:7px 16px;border-radius:16px;color:var(--ink-2);font-family:inherit;font-size:12px;font-weight:800;cursor:pointer;transition:background .15s,color .15s}
+  .tab svg{width:22px;height:22px}
+  .tab.on{color:var(--accent-ink);background:var(--pink-soft)}
+
+  /* ---- 通用 ---- */
+  .card{background:#fff;border:1.5px solid var(--line);border-radius:22px;padding:14px}
+  .row-between{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .chip{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 11px;border-radius:12px;font-size:12.5px;font-weight:800;color:var(--ink);white-space:nowrap}
+  .chip::before{content:'';width:7px;height:7px;border-radius:50%;flex:none}
+  .lv-quiet{background:#E3F1F8}.lv-quiet::before{background:#5FA8C4}
+  .lv-normal{background:#E7F3E1}.lv-normal::before{background:#6DB866}
+  .lv-noisy{background:#FBF0CF}.lv-noisy::before{background:#CF9A24}
+  .lv-loud{background:#FBE3EA}.lv-loud::before{background:#DD6486}
+
+  /* ---- 检测主页 ---- */
+  .home-head{margin-bottom:4px}
+  .app-title{font-family:'ZCOOL KuaiLe','Nunito','PingFang SC','Microsoft YaHei UI',sans-serif;font-size:22px;font-weight:400;letter-spacing:.8px;line-height:1.2}
+  .loc{display:flex;align-items:center;gap:5px;font-size:13px;color:var(--ink-2);margin-top:5px;font-weight:600}
+  .loc svg{flex:none;color:var(--accent-ink)}
+  .avatar{width:42px;height:42px;border-radius:50%;background:var(--pink-soft);display:flex;align-items:center;justify-content:center;flex:none}
+  .avatar svg{width:34px;height:34px}
+
+  .dial-wrap{position:relative;max-width:300px;margin:2px auto 0}
+  .dial-wrap::before{content:'';position:absolute;left:50%;top:70%;transform:translate(-50%,-50%);width:232px;height:232px;border-radius:50%;background:#FDF3F7;z-index:0}
+  .dial{position:relative;z-index:1;width:100%;height:auto;display:block}
+  .dial-value{position:relative;z-index:1;text-align:center;margin-top:-6px}
+  .db-line{display:flex;align-items:baseline;justify-content:center;gap:6px}
+  .db-num{font-size:58px;font-weight:900;letter-spacing:-2px;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums}
+  .db-unit{font-size:19px;font-weight:800;color:var(--ink-2)}
+  .dial-value .chip{margin-top:9px}
+  .dial-sub{font-size:12.5px;color:var(--ink-2);margin-top:9px;font-weight:600}
+  .dial-sub b{color:var(--ink);font-weight:800;font-variant-numeric:tabular-nums}
+
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:18px}
+  .stat{border-radius:18px;padding:11px 6px 10px;text-align:center}
+  .stat .sl{display:block;font-size:12.5px;font-weight:800;color:var(--ink);opacity:.72;margin-bottom:4px}
+  .stat .sv{display:block;font-size:19px;font-weight:900;color:var(--ink);line-height:1.05;font-variant-numeric:tabular-nums}
+  .stat .su{font-size:11.5px;font-weight:800;color:var(--ink);opacity:.55;margin-left:2px}
+  .s-min{background:#E4F2F8}.s-avg{background:#E9F4E3}.s-med{background:#FCF3D8}.s-max{background:#FBE4EA}
+
+  .wave-card{margin-top:13px;padding:13px 14px 10px}
+  .wc-head{display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:800;margin-bottom:8px}
+  .wc-head .pk{font-size:12.5px;color:var(--ink-2);font-weight:700}
+  .wave{width:100%;height:88px;display:block}
+  .wave-axis{display:flex;justify-content:space-between;font-size:11.5px;color:var(--ink-2);font-weight:700;margin-top:4px}
+
+  .main-btn{width:100%;height:58px;margin-top:14px;border-radius:29px;border:none;font-family:inherit;font-size:17px;font-weight:900;letter-spacing:1px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:transform .1s ease,box-shadow .1s ease}
+  .main-btn.st-run{background:var(--pink);color:var(--ink);box-shadow:0 7px 0 #EAB2C2}
+  .main-btn.st-pause{background:#fff;color:var(--accent-ink);border:2.5px solid #F2B9CD;box-shadow:0 7px 0 #FBE3EB}
+  .main-btn:active{transform:translateY(5px);box-shadow:none}
+
+  /* ---- 历史列表 ---- */
+  .list-head{display:flex;align-items:baseline;justify-content:space-between;margin:6px 0 12px}
+  .h1{font-size:22px;font-weight:900;letter-spacing:.5px}
+  .count{font-size:13px;color:var(--ink-2);font-weight:700}
+  .filters{display:flex;gap:8px;margin-bottom:14px}
+  .fchip{font-family:inherit;font-size:12.5px;font-weight:800;color:var(--ink-2);background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:6px 14px;cursor:pointer}
+  .fchip.on{background:var(--pink-soft);border-color:#F4C4D6;color:var(--accent-ink)}
+  .hist-card{display:block;width:100%;text-align:left;font-family:inherit;background:#fff;border:1.5px solid var(--line);border-radius:22px;padding:13px 15px 12px;margin-bottom:10px;cursor:pointer;transition:transform .1s ease,border-color .15s}
+  .hist-card:active{transform:scale(.985);border-color:#F4C4D6}
+  .hc-r1{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .hc-place{font-size:15.5px;font-weight:900;letter-spacing:.2px}
+  .hc-r2{font-size:12.5px;color:var(--ink-2);font-weight:700;margin-top:3px}
+  .spark{width:100%;height:34px;display:block;margin:9px 0 7px}
+  .hc-r4{display:flex;align-items:center;gap:16px;font-size:12.5px;color:var(--ink-2);font-weight:700}
+  .hc-r4 b{font-size:14.5px;font-weight:900;color:var(--ink);font-variant-numeric:tabular-nums;margin-right:2px}
+  .chev{margin-left:auto;color:#C9B8BF;flex:none}
+
+  /* ---- 详情 ---- */
+  .d-head{display:flex;align-items:center;gap:12px;margin:6px 0 14px}
+  .back{width:38px;height:38px;border-radius:50%;border:1.5px solid var(--line);background:#fff;color:var(--accent-ink);display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none;font-family:inherit}
+  .back:active{background:var(--pink-soft)}
+  .d-title{font-size:17px;font-weight:900}
+  .d-hero{background:#FDF3F7;border-radius:24px;padding:16px 18px 15px}
+  .d-place{font-size:19px;font-weight:900;letter-spacing:.3px}
+  .d-time{font-size:12.5px;color:var(--ink-2);font-weight:700;margin-top:4px}
+  .d-bigline{display:flex;align-items:flex-end;justify-content:space-between;margin-top:10px}
+  .d-big{font-size:44px;font-weight:900;line-height:1;letter-spacing:-1.5px;color:var(--ink);font-variant-numeric:tabular-nums}
+  .d-big span{font-size:14px;font-weight:800;color:var(--ink-2);letter-spacing:0;margin-left:4px}
+  .d-meta{margin-top:13px}
+  .meta-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:9px 2px;border-bottom:1.5px dashed #F1E5E9;font-size:13px}
+  .meta-row:last-child{border-bottom:none}
+  .meta-row .k{color:var(--ink-2);font-weight:700;flex:none}
+  .meta-row .v{font-weight:800;text-align:right}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;letter-spacing:-.2px}
+
+  /* ---- 关于 ---- */
+  .about-hero{text-align:center;padding:12px 0 6px}
+  .peng-wrap{width:150px;height:150px;margin:0 auto;border-radius:50%;background:#FDF3F7;display:flex;align-items:center;justify-content:center}
+  .peng-wrap svg{width:126px;height:126px}
+  .about-name{font-family:'ZCOOL KuaiLe','Nunito','PingFang SC','Microsoft YaHei UI',sans-serif;font-size:24px;letter-spacing:1px;margin-top:14px}
+  .about-en{font-size:12.5px;color:var(--ink-2);font-weight:700;letter-spacing:.6px;margin-top:3px}
+  .ver{display:inline-block;margin-top:10px;background:var(--pink);color:var(--ink);font-size:12.5px;font-weight:900;border-radius:12px;padding:4px 13px;letter-spacing:.4px}
+  .feat{display:flex;gap:8px;justify-content:center;margin-top:13px;flex-wrap:wrap}
+  .feat span{font-size:12px;font-weight:800;color:var(--accent-ink);background:var(--pink-soft);border-radius:12px;padding:5px 12px}
+  .intro{margin-top:14px;font-size:14px;line-height:1.85;color:var(--ink);font-weight:600}
+  .info-card{margin-top:12px;padding:6px 14px}
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <h1>咕嗄声音检测 · 方向 C「カナヘイ治愈系」</h1>
+  <p>低饱和马卡龙奶油色 · 柔圆表盘 · 毛绒质感企鹅 —— 三个方向里最安静的一版</p>
+  <div class="swatches">
+    <i style="background:#F7C9D3"></i><i style="background:#FBE7A1"></i><i style="background:#BFE3F0"></i>
+    <i style="background:#C9E6C0"></i><i style="background:#FFFDF7"></i><i style="background:#463C43"></i>
+  </div>
+</div>
+
+<div class="stage" id="stage"></div>
+
+<script>
+/* =======================================================================
+   咕嗄声音检测 · Kanahei 治愈系原型 · 原生 JS 迷你状态机
+   ======================================================================= */
+
+/* ---------- 表盘几何 ---------- */
+var CX = 150, CY = 140, RR = 96, A_START = 205, A_SWEEP = 230, DB_MIN = 30, DB_MAX = 90;
+
+function angleFor(v){
+  var f = (v - DB_MIN) / (DB_MAX - DB_MIN);
+  f = Math.max(0, Math.min(1, f));
+  return A_START - A_SWEEP * f;
+}
+function pt(a, r){
+  var rad = a * Math.PI / 180;
+  return [CX + r * Math.cos(rad), CY - r * Math.sin(rad)];
+}
+function arcPath(a0, a1, r){
+  var p0 = pt(a0, r), p1 = pt(a1, r);
+  var large = Math.abs(a0 - a1) > 180 ? 1 : 0;
+  var sweep = a1 < a0 ? 1 : 0;
+  return 'M ' + p0[0].toFixed(2) + ' ' + p0[1].toFixed(2) +
+         ' A ' + r + ' ' + r + ' 0 ' + large + ' ' + sweep + ' ' +
+         p1[0].toFixed(2) + ' ' + p1[1].toFixed(2);
+}
+
+/* 等级：<45 安静 / 45–65 正常 / 65–85 嘈杂 / >85 震耳 */
+var LEVELS = {
+  quiet : {name:'安静', c:'#5FA8C4', bg:'#E3F1F8'},
+  normal: {name:'正常', c:'#6DB866', bg:'#E7F3E1'},
+  noisy : {name:'嘈杂', c:'#CF9A24', bg:'#FBF0CF'},
+  loud  : {name:'震耳', c:'#DD6486', bg:'#FBE3EA'}
+};
+function levelOf(v){
+  if (v < 45) return 'quiet';
+  if (v < 65) return 'normal';
+  if (v < 85) return 'noisy';
+  return 'loud';
+}
+
+/* ---------- 企鹅「咕嗄」原始扁平造型（纯 SVG 几何） ---------- */
+function penguinSVG(){
+  return '<svg viewBox="0 0 120 120" aria-label="咕嗄">'
+    /* 翅膀 */
+    + '<ellipse cx="19" cy="76" rx="8" ry="18" fill="#2E262B" transform="rotate(-10 19 76)"/>'
+    + '<ellipse cx="101" cy="76" rx="8" ry="18" fill="#2E262B" transform="rotate(10 101 76)"/>'
+    /* 脚 */
+    + '<ellipse cx="49" cy="109" rx="11" ry="6.5" fill="#F0B27E"/>'
+    + '<ellipse cx="71" cy="109" rx="11" ry="6.5" fill="#F0B27E"/>'
+    /* 身体 */
+    + '<ellipse cx="60" cy="68" rx="38" ry="43" fill="#3A3135"/>'
+    /* 脸 + 肚子白斑 */
+    + '<ellipse cx="60" cy="80" rx="26" ry="31" fill="#FFFDF7"/>'
+    /* 腮红 */
+    + '<circle cx="41" cy="65" r="7" fill="#F7C9D3" opacity=".9"/>'
+    + '<circle cx="79" cy="65" r="7" fill="#F7C9D3" opacity=".9"/>'
+    /* 豆豆眼 */
+    + '<circle cx="49" cy="55" r="3.6" fill="#3A3135"/>'
+    + '<circle cx="71" cy="55" r="3.6" fill="#3A3135"/>'
+    + '<circle cx="50.4" cy="53.4" r="1.25" fill="#ffffff"/>'
+    + '<circle cx="72.4" cy="53.4" r="1.25" fill="#ffffff"/>'
+    /* 小嘴 */
+    + '<path d="M60 59 L65.5 64 L60 68.5 L54.5 64 Z" fill="#F0A868"/>'
+    /* 耳机头梁 */
+    + '<path d="M20 44 Q60 9 100 44" stroke="#EE8FB4" stroke-width="7" fill="none" stroke-linecap="round"/>'
+    /* 耳机罩 */
+    + '<rect x="8" y="33" width="24" height="27" rx="12" fill="#EE8FB4"/>'
+    + '<rect x="88" y="33" width="24" height="27" rx="12" fill="#EE8FB4"/>'
+    + '<rect x="13" y="38" width="14" height="17" rx="7" fill="#FFFDF7" opacity=".5"/>'
+    + '<rect x="93" y="38" width="14" height="17" rx="7" fill="#FFFDF7" opacity=".5"/>'
+    + '</svg>';
+}
+
+/* ---------- 波形数据（确定性伪随机，平滑） ---------- */
+function mulberry32(a){
+  return function(){
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    var t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function waveData(seed, n, opt){
+  opt = opt || {};
+  var rnd = mulberry32(seed * 7919 + 13);
+  var base = opt.base != null ? opt.base : (44 + rnd() * 6);
+  var p1 = 0.6 + rnd() * 0.8, p2 = 1.4 + rnd() * 1.4, p3 = 2.6 + rnd() * 2.2;
+  // 靠近 30 / 80 上下限时收敛振幅，避免削顶变平
+  var headTop = Math.max(0.4, Math.min(1, (80 - base) / 18));
+  var headBot = Math.max(0.4, Math.min(1, (base - 30) / 18));
+  var head = Math.min(headTop, headBot, 1);
+  var a1 = (3.5 + rnd() * 4.0) * head, a2 = (2.5 + rnd() * 3.0) * head, a3 = (1.2 + rnd() * 2.2) * head;
+  var out = [];
+  for (var i = 0; i < n; i++){
+    var t = i / (n - 1);
+    var v = base
+      + Math.sin(t * Math.PI * 2 * p1) * a1
+      + Math.sin(t * Math.PI * 2 * p2 + 1.7) * a2
+      + Math.sin(t * Math.PI * 2 * p3 + 3.3) * a3;
+    if (opt.bump) v += opt.bump[1] * Math.exp(-Math.pow((t - opt.bump[0]) / 0.13, 2));
+    out.push(Math.max(30, Math.min(80, v)));
+  }
+  return out;
+}
+function wavePaths(data, w, h, lo, hi){
+  var PAD = 4, n = data.length, line = '';
+  var X = function(i){ return PAD + (i / (n - 1)) * (w - PAD * 2); };
+  var Y = function(v){ return (h - PAD) - ((v - lo) / (hi - lo)) * (h - PAD * 2); };
+  for (var i = 0; i < n; i++){
+    line += (i ? ' L ' : 'M ') + X(i).toFixed(2) + ' ' + Y(data[i]).toFixed(2);
+  }
+  return {line: line, area: line + ' L ' + (w - PAD) + ' ' + (h - PAD) + ' L ' + PAD + ' ' + (h - PAD) + ' Z', Y: Y};
+}
+function sparkSVG(entry){
+  var d = waveData(entry.seed, 30, {base: entry.avg, bump: entry.bump});
+  var p = wavePaths(d, 100, 34, 26, 94);
+  var col = LEVELS[levelOf(entry.avg)].c;
+  return '<svg class="spark" viewBox="0 0 100 34" preserveAspectRatio="none">'
+    + '<path d="' + p.area + '" fill="' + col + '" opacity=".18"/>'
+    + '<path d="' + p.line + '" fill="none" stroke="' + col + '" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>'
+    + '</svg>';
+}
+function waveSVG(data, hi, h, peakLabel){
+  var p = wavePaths(data, 300, h, 28, hi);
+  var avg = data.reduce(function(a, b){ return a + b; }, 0) / data.length;
+  return '<svg class="wave" viewBox="0 0 300 ' + h + '" preserveAspectRatio="none">'
+    + '<path d="' + p.area + '" fill="#F7C9D3" opacity=".42"/>'
+    + '<line x1="0" y1="' + p.Y(avg).toFixed(1) + '" x2="300" y2="' + p.Y(avg).toFixed(1) + '" stroke="#B84A78" stroke-width="1.4" stroke-dasharray="4 5" opacity=".45" vector-effect="non-scaling-stroke"/>'
+    + '<path d="' + p.line + '" fill="none" stroke="#E57DA5" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>'
+    + '</svg>';
+}
+
+/* ---------- 表盘 ---------- */
+function dialSVG(value){
+  var bands = [
+    {lo:30, hi:45, c:'#BFE3F0'},
+    {lo:45, hi:65, c:'#C9E6C0'},
+    {lo:65, hi:85, c:'#FBE7A1'},
+    {lo:85, hi:90, c:'#F7C9D3'}
+  ];
+  var GAP = 2.6, s = '';
+  bands.forEach(function(b){
+    s += '<path d="' + arcPath(angleFor(b.lo) + GAP / 2, angleFor(b.hi) - GAP / 2, RR) +
+         '" stroke="' + b.c + '" stroke-width="16" fill="none" stroke-linecap="round"/>';
+  });
+  for (var d = 30; d <= 90; d += 5){
+    var a = angleFor(d), major = (d % 10 === 0);
+    var q0 = pt(a, major ? 71 : 77), q1 = pt(a, 86);
+    s += '<line x1="' + q0[0].toFixed(1) + '" y1="' + q0[1].toFixed(1) + '" x2="' + q1[0].toFixed(1) + '" y2="' + q1[1].toFixed(1) +
+         '" stroke="' + (major ? '#C9B4BB' : '#E6D8DD') + '" stroke-width="' + (major ? 1.8 : 1.2) + '" stroke-linecap="round"/>';
+  }
+  [[30, '30'], [60, '60'], [90, '90']].forEach(function(t){
+    var q = pt(angleFor(t[0]), 114);
+    s += '<text x="' + q[0].toFixed(1) + '" y="' + (q[1] + 4).toFixed(1) +
+         '" text-anchor="middle" font-size="12" font-weight="800" fill="#7A6D74" font-family="Nunito,sans-serif">' + t[1] + '</text>';
+  });
+  var rot = (90 - angleFor(value)).toFixed(2);
+  s += '<g data-needle transform="rotate(' + rot + ' ' + CX + ' ' + CY + ')">'
+    + '<line x1="' + CX + '" y1="' + (CY - 14) + '" x2="' + CX + '" y2="' + (CY - 68) + '" stroke="#463C43" stroke-width="5" stroke-linecap="round"/>'
+    + '<circle cx="' + CX + '" cy="' + (CY - 68) + '" r="5.2" fill="#EE8FB4"/>'
+    + '</g>'
+    + '<circle cx="' + CX + '" cy="' + CY + '" r="9" fill="#FFFDF7" stroke="#463C43" stroke-width="3"/>'
+    + '<circle cx="' + CX + '" cy="' + CY + '" r="3" fill="#EE8FB4"/>';
+  return '<svg class="dial" viewBox="0 0 300 200">' + s + '</svg>';
+}
+
+/* ---------- 状态栏 / 导航 ---------- */
+function statusbarHTML(){
+  var signal = '<svg width="15" height="11" viewBox="0 0 15 11" fill="currentColor"><rect x="0" y="7" width="2.6" height="4" rx="1.3"/><rect x="4" y="5" width="2.6" height="6" rx="1.3"/><rect x="8" y="2.5" width="2.6" height="8.5" rx="1.3"/><rect x="12" y="0" width="2.6" height="11" rx="1.3"/></svg>';
+  var wifi = '<svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M1.6 4.6Q8 -1.1 14.4 4.6"/><path d="M4.4 7.4Q8 4.5 11.6 7.4"/><circle cx="8" cy="10.2" r="1.1" fill="currentColor" stroke="none"/></svg>';
+  var batt = '<svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x="0.6" y="0.6" width="18" height="9.8" rx="3.1" stroke="currentColor" stroke-width="1.2" opacity=".4"/><rect x="2.4" y="2.4" width="12" height="6.2" rx="2" fill="currentColor"/><path d="M20.5 3.9v3.2c.9-.3 1.3-.95 1.3-1.6s-.4-1.3-1.3-1.6Z" fill="currentColor" opacity=".4"/></svg>';
+  return '<div class="statusbar"><span class="sb-time">9:41</span><span class="sb-icons">' + signal + wifi + batt + '</span></div>';
+}
+function tabHTML(key, label, active){
+  var icons = {
+    home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 10.6v2.8M12 6.6v10.8M19 9.2v5.6"/></svg>',
+    history: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.4"/><path d="M12 7.5V12l3.2 2.1"/></svg>',
+    about: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="8.4"/><path d="M12 11.2v5.1"/><circle cx="12" cy="7.9" r="1" fill="currentColor" stroke="none"/></svg>'
+  };
+  return '<button class="tab' + (active ? ' on' : '') + '" data-action="tab" data-tab="' + key + '">' + icons[key] + '<span>' + label + '</span></button>';
+}
+function tabbarHTML(st){
+  var act = st.screen === 'home' ? 'home' : (st.screen === 'about' ? 'about' : 'history');
+  return '<nav class="tabbar">' + tabHTML('home', '检测', act === 'home') + tabHTML('history', '历史', act === 'history') + tabHTML('about', '关于', act === 'about') + '</nav>';
+}
+
+/* ---------- 演示数据 ---------- */
+var HISTORY = [
+  {id:0, place:'家 · 客厅', addr:'北京市朝阳区', coord:'39.90°N 116.41°E', time:'昨夜 23:10 – 23:40', dur:'30 分钟', avg:38.2, mx:52.4, mn:31.2, md:37.6, seed:3, base:37},
+  {id:1, place:'地铁 2 号线', addr:'北京市东城区', coord:'39.93°N 116.42°E', time:'今天 08:15 – 08:27', dur:'12 分钟', avg:72.4, mx:88.6, mn:64.1, md:71.8, seed:11, base:70, bump:[0.42,7]},
+  {id:2, place:'办公室 · 工位', addr:'北京市海淀区', coord:'39.98°N 116.31°E', time:'今天 10:02 – 10:32', dur:'30 分钟', avg:46.8, mx:61.3, mn:39.5, md:45.9, seed:23, base:46},
+  {id:3, place:'马路 · 十字路口', addr:'北京市朝阳区', coord:'39.91°N 116.46°E', time:'昨天 18:20 – 18:26', dur:'6 分钟', avg:78.9, mx:94.2, mn:70.3, md:78.1, seed:37, base:76, bump:[0.66,6]},
+  {id:4, place:'卧室 · 睡眠', addr:'北京市朝阳区', coord:'39.90°N 116.41°E', time:'昨夜 01:00 – 07:00', dur:'6 小时', avg:33.7, mx:48.9, mn:29.4, md:33.1, seed:53, base:32.5}
+];
+function entryById(id){
+  for (var i = 0; i < HISTORY.length; i++) if (HISTORY[i].id === id) return HISTORY[i];
+  return HISTORY[0];
+}
+
+/* ---------- 界面渲染 ---------- */
+function homeHTML(st){
+  var lv = levelOf(st.value), L = LEVELS[lv];
+  var wave = waveData(7, 56, {base: 46, bump: [0.63, 12]});
+  return '<div class="pad">'
+    + '<div class="home-head row-between">'
+      + '<div>'
+        + '<div class="app-title">咕嗄声音检测</div>'
+        + '<div class="loc"><svg width="12" height="15" viewBox="0 0 12 15" fill="none"><path d="M6 1.2c-2.6 0-4.6 2-4.6 4.6 0 3.4 4.6 7.9 4.6 7.9s4.6-4.5 4.6-7.9c0-2.6-2-4.6-4.6-4.6Z" stroke="currentColor" stroke-width="1.4"/><circle cx="6" cy="5.8" r="1.6" fill="currentColor"/></svg>'
+        + '<span>北京市朝阳区 · 39.9°N 116.4°E</span></div>'
+      + '</div>'
+      + '<div class="avatar">' + penguinSVG() + '</div>'
+    + '</div>'
+    + '<div class="dial-wrap">' + dialSVG(st.value)
+      + '<div class="dial-value">'
+        + '<div class="db-line"><span class="db-num" data-live-num>' + st.value.toFixed(1) + '</span><span class="db-unit">dB</span></div>'
+        + '<div><span class="chip lv-' + lv + '" data-level>' + L.name + '</span></div>'
+        + '<div class="dial-sub">' + (st.running ? '检测中' : '已暂停') + ' <b data-elapsed>' + fmtTime(st.elapsed) + '</b> · 采样 48 kHz · 校准 −0.3 dB</div>'
+      + '</div>'
+    + '</div>'
+    + '<div class="stats">'
+      + '<div class="stat s-min"><span class="sl">最小</span><span class="sv">31.2<span class="su">dB</span></span></div>'
+      + '<div class="stat s-avg"><span class="sl">平均</span><span class="sv">46.8<span class="su">dB</span></span></div>'
+      + '<div class="stat s-med"><span class="sl">中位</span><span class="sv">44.5<span class="su">dB</span></span></div>'
+      + '<div class="stat s-max"><span class="sl">最大</span><span class="sv">78.9<span class="su">dB</span></span></div>'
+    + '</div>'
+    + '<div class="card wave-card">'
+      + '<div class="wc-head"><span>近 60 秒波形</span><span class="pk">峰值 78.9 dB · 抖动 2.1</span></div>'
+      + waveSVG(wave, 84, 88)
+      + '<div class="wave-axis"><span>−60 s</span><span>−30 s</span><span>现在</span></div>'
+    + '</div>'
+    + '<button class="main-btn ' + (st.running ? 'st-pause' : 'st-run') + '" data-action="toggle">'
+      + (st.running
+          ? '<svg width="16" height="16" viewBox="0 0 16 16"><rect x="3" y="2" width="3.6" height="12" rx="1.8" fill="currentColor"/><rect x="9.4" y="2" width="3.6" height="12" rx="1.8" fill="currentColor"/></svg>暂停检测'
+          : '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M4.2 2.8 13 8 4.2 13.2Z" fill="currentColor" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"/></svg>开始检测')
+    + '</button>'
+  + '</div>';
+}
+
+function historyHTML(){
+  var cards = HISTORY.map(function(e){
+    var lv = levelOf(e.avg), L = LEVELS[lv];
+    return '<button class="hist-card" data-action="open-detail" data-id="' + e.id + '">'
+      + '<div class="hc-r1"><span class="hc-place">' + e.place + '</span><span class="chip lv-' + lv + '">' + L.name + '</span></div>'
+      + '<div class="hc-r2">' + e.time + ' · ' + e.dur + '</div>'
+      + sparkSVG(e)
+      + '<div class="hc-r4"><span><b>' + e.avg.toFixed(1) + '</b>平均 dB</span><span><b>' + e.mx.toFixed(1) + '</b>最大 dB</span>'
+      + '<svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></div>'
+      + '</button>';
+  }).join('');
+  return '<div class="pad">'
+    + '<div class="list-head"><span class="h1">检测历史</span><span class="count">共 ' + HISTORY.length + ' 条记录</span></div>'
+    + '<div class="filters"><button class="fchip on" data-action="noop">全部</button><button class="fchip" data-action="noop">今天</button><button class="fchip" data-action="noop">本周</button><button class="fchip" data-action="noop">安静</button></div>'
+    + cards
+  + '</div>';
+}
+
+function detailHTML(st){
+  var e = entryById(st.detailId), lv = levelOf(e.avg), L = LEVELS[lv];
+  var wave = waveData(e.seed, 64, {base: e.base, bump: e.bump});
+  return '<div class="pad">'
+    + '<div class="d-head">'
+      + '<button class="back" data-action="back"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.8 5 8 12l6.8 7"/></svg></button>'
+      + '<span class="d-title">检测详情</span>'
+    + '</div>'
+    + '<div class="d-hero">'
+      + '<div class="d-place">' + e.place + '</div>'
+      + '<div class="d-time">' + e.time + ' · ' + e.dur + ' · ' + e.addr + '</div>'
+      + '<div class="d-bigline"><div class="d-big">' + e.avg.toFixed(1) + '<span>平均 dB</span></div><span class="chip lv-' + lv + '">' + L.name + '</span></div>'
+    + '</div>'
+    + '<div class="stats">'
+      + '<div class="stat s-min"><span class="sl">最小</span><span class="sv">' + e.mn.toFixed(1) + '<span class="su">dB</span></span></div>'
+      + '<div class="stat s-avg"><span class="sl">平均</span><span class="sv">' + e.avg.toFixed(1) + '<span class="su">dB</span></span></div>'
+      + '<div class="stat s-med"><span class="sl">中位</span><span class="sv">' + e.md.toFixed(1) + '<span class="su">dB</span></span></div>'
+      + '<div class="stat s-max"><span class="sl">最大</span><span class="sv">' + e.mx.toFixed(1) + '<span class="su">dB</span></span></div>'
+    + '</div>'
+    + '<div class="card wave-card">'
+      + '<div class="wc-head"><span>完整波形</span><span class="pk">' + e.dur + ' · 采样 48 kHz</span></div>'
+      + waveSVG(wave, 96, 104)
+      + '<div class="wave-axis"><span>开始</span><span>中段</span><span>结束</span></div>'
+    + '</div>'
+    + '<div class="card d-meta">'
+      + '<div class="meta-row"><span class="k">地点</span><span class="v">' + e.addr + ' · ' + e.coord + '</span></div>'
+      + '<div class="meta-row"><span class="k">时长</span><span class="v">' + e.dur + '（' + e.time + '）</span></div>'
+      + '<div class="meta-row"><span class="k">等效声级 Leq</span><span class="v">' + e.avg.toFixed(1) + ' dB(A)</span></div>'
+      + '<div class="meta-row"><span class="k">设备</span><span class="v">手机内置麦克风 · 已校准</span></div>'
+    + '</div>'
+  + '</div>';
+}
+
+function aboutHTML(){
+  return '<div class="pad">'
+    + '<div class="about-hero">'
+      + '<div class="peng-wrap">' + penguinSVG() + '</div>'
+      + '<div class="about-name">咕嗄声音检测</div>'
+      + '<div class="about-en">GugaNoiseDetector</div>'
+      + '<div class="ver">v1.0.0 · build 100</div>'
+      + '<div class="feat"><span>本机存储</span><span>无需登录</span><span>实时波形</span></div>'
+    + '</div>'
+    + '<div class="card intro">咕嗄是一只住在你手机里的小企鹅。它替你聆听世界的音量——家里的安静、办公室的嗡鸣、马路上呼啸而过的车流。声音太大时，它会轻轻提醒你戴上耳机，或者走远一点。所有数据只保存在本机，不上传、不联网。</div>'
+    + '<div class="card info-card">'
+      + '<div class="meta-row"><span class="k">开发者</span><span class="v">Cloudea Studio</span></div>'
+      + '<div class="meta-row"><span class="k">包名</span><span class="v mono">com.cloudea.noise.detector</span></div>'
+      + '<div class="meta-row"><span class="k">GitHub</span><span class="v mono">github.com/cloudea/GugaNoiseDetector</span></div>'
+      + '<div class="meta-row"><span class="k">开源许可</span><span class="v">MIT License</span></div>'
+    + '</div>'
+  + '</div>';
+}
+
+function bodyHTML(st){
+  if (st.screen === 'home') return homeHTML(st);
+  if (st.screen === 'history') return historyHTML(st);
+  if (st.screen === 'detail') return detailHTML(st);
+  return aboutHTML();
+}
+
+function fmtTime(sec){
+  var m = Math.floor(sec / 60), s = Math.floor(sec % 60);
+  return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+}
+
+/* ---------- 手机装配 ---------- */
+var PHONES = [
+  {label:'检测主页 · 实时检测中', screen:'home', running:true},
+  {label:'检测主页 · 已暂停', screen:'home', running:false},
+  {label:'历史列表 · 5 条记录', screen:'history'},
+  {label:'历史详情 · 家 · 客厅', screen:'detail', detailId:0},
+  {label:'历史详情 · 地铁 2 号线', screen:'detail', detailId:1},
+  {label:'关于 · 咕嗄', screen:'about'}
+];
+var states = PHONES.map(function(p){
+  return {screen:p.screen, running:!!p.running, detailId:p.detailId || 0, value:42.3, elapsed:167};
+});
+
+function renderPhone(i){
+  var st = states[i];
+  var el = document.querySelector('.phone[data-phone="' + i + '"]');
+  el.innerHTML = '<div class="phone-label">' + PHONES[i].label + '</div>'
+    + '<div class="shell"><div class="screen">'
+      + statusbarHTML()
+      + '<div class="punch"></div>'
+      + '<div class="app"><div class="scroll">' + bodyHTML(st) + '</div>' + tabbarHTML(st) + '</div>'
+      + '<div class="gesture"></div>'
+    + '</div></div>';
+}
+
+/* 只增量更新实时数值，避免整屏重绘闪烁 */
+function patchLive(i){
+  var st = states[i];
+  var root = document.querySelector('.phone[data-phone="' + i + '"]');
+  if (!root) return;
+  var num = root.querySelector('[data-live-num]');
+  if (!num) return;
+  num.textContent = st.value.toFixed(1);
+  var nd = root.querySelector('[data-needle]');
+  if (nd) nd.setAttribute('transform', 'rotate(' + (90 - angleFor(st.value)).toFixed(2) + ' ' + CX + ' ' + CY + ')');
+  var key = levelOf(st.value);
+  var chip = root.querySelector('[data-level]');
+  if (chip){ chip.className = 'chip lv-' + key; chip.textContent = LEVELS[key].name; }
+  var el2 = root.querySelector('[data-elapsed]');
+  if (el2) el2.textContent = fmtTime(st.elapsed);
+}
+
+/* ---------- 事件（事件委托） ---------- */
+document.getElementById('stage').addEventListener('click', function(ev){
+  var phoneEl = ev.target.closest ? ev.target.closest('.phone') : null;
+  if (!phoneEl) return;
+  var i = parseInt(phoneEl.getAttribute('data-phone'), 10);
+  var actEl = ev.target.closest('[data-action]');
+  if (!actEl) return;
+  var act = actEl.getAttribute('data-action');
+  var st = states[i];
+  if (act === 'noop') return;
+  if (act === 'toggle'){
+    st.running = !st.running;
+    var sc = phoneEl.querySelector('.scroll');
+    var top = sc ? sc.scrollTop : 0;
+    renderPhone(i);
+    var sc2 = phoneEl.querySelector('.scroll');
+    if (sc2) sc2.scrollTop = top;
+  } else if (act === 'tab'){
+    st.screen = actEl.getAttribute('data-tab');
+    renderPhone(i);
+  } else if (act === 'open-detail'){
+    st.screen = 'detail';
+    st.detailId = parseInt(actEl.getAttribute('data-id'), 10);
+    renderPhone(i);
+  } else if (act === 'back'){
+    st.screen = 'history';
+    renderPhone(i);
+  }
+});
+
+/* ---------- 实时心跳 ---------- */
+setInterval(function(){
+  states.forEach(function(st, i){
+    if (st.screen === 'home' && st.running){
+      st.value = Math.max(34, Math.min(53, st.value + (Math.random() - 0.5) * 1.1));
+      st.elapsed++;
+      patchLive(i);
+    }
+  });
+}, 900);
+
+/* ---------- 启动 ---------- */
+(function init(){
+  var stage = document.getElementById('stage');
+  stage.innerHTML = PHONES.map(function(p, i){
+    return '<div class="phone" data-phone="' + i + '"></div>';
+  }).join('');
+  PHONES.forEach(function(p, i){ renderPhone(i); });
+})();
+</script>
+</body>
+</html>
