@@ -25,8 +25,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -74,11 +76,22 @@ fun HomeScreen(
 ) {
     val level = DbLevel.of(state.currentDb)
     val running = state.state == DetectorState.RUNNING
+    val scrollState = rememberScrollState()
+
+    // 「开始检测」后波形卡片才出现、页面变长，自动滚到底让主按钮留在视野内。
+    // 等两帧是为了让新增卡片参与布局，scrollState.maxValue 才是最终值。
+    LaunchedEffect(state.state) {
+        if (state.state == DetectorState.RUNNING) {
+            withFrameNanos { }
+            withFrameNanos { }
+            scrollState.animateScrollTo(scrollState.maxValue)
+        }
+    }
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(scrollState)
             .padding(horizontal = 20.dp)
             .padding(top = 6.dp, bottom = 16.dp),
     ) {
@@ -161,47 +174,49 @@ fun HomeScreen(
             max = state.maxDb,
         )
 
-        // ---- 波形 ----
-        Spacer(Modifier.height(13.dp))
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(GugaWhite, RoundedCornerShape(22.dp))
-                .border(1.5.dp, GugaLine, RoundedCornerShape(22.dp))
-                .padding(start = 14.dp, end = 14.dp, top = 13.dp, bottom = 10.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+        // ---- 波形（开始检测后才出现，保证首屏就能看到主按钮）----
+        if (state.state != DetectorState.IDLE) {
+            Spacer(Modifier.height(13.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(GugaWhite, RoundedCornerShape(22.dp))
+                    .border(1.5.dp, GugaLine, RoundedCornerShape(22.dp))
+                    .padding(start = 14.dp, end = 14.dp, top = 13.dp, bottom = 10.dp),
             ) {
-                Text(
-                    text = "近 60 秒波形",
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.ExtraBold),
-                    color = GugaInk,
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "近 60 秒波形",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.ExtraBold),
+                        color = GugaInk,
+                    )
+                    Text(
+                        text = "峰值 ${state.maxDb.fmt1()} dB · 抖动 ${DbMath.stdDev(state.recent).fmt1()}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = GugaInk2,
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+                WaveformChart(
+                    data = state.recent,
+                    lo = 28f,
+                    hi = WaveHi,
+                    modifier = Modifier.fillMaxWidth().height(88.dp),
+                    mode = WaveMode.FULL,
                 )
-                Text(
-                    text = "峰值 ${state.maxDb.fmt1()} dB · 抖动 ${DbMath.stdDev(state.recent).fmt1()}",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = GugaInk2,
-                )
-            }
-            Spacer(Modifier.height(8.dp))
-            WaveformChart(
-                data = state.recent,
-                lo = 28f,
-                hi = WaveHi,
-                modifier = Modifier.fillMaxWidth().height(88.dp),
-                mode = WaveMode.FULL,
-            )
-            Spacer(Modifier.height(4.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text("−60 s", style = MaterialTheme.typography.labelMedium, color = GugaInk2)
-                Text("−30 s", style = MaterialTheme.typography.labelMedium, color = GugaInk2)
-                Text("现在", style = MaterialTheme.typography.labelMedium, color = GugaInk2)
+                Spacer(Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text("−60 s", style = MaterialTheme.typography.labelMedium, color = GugaInk2)
+                    Text("−30 s", style = MaterialTheme.typography.labelMedium, color = GugaInk2)
+                    Text("现在", style = MaterialTheme.typography.labelMedium, color = GugaInk2)
+                }
             }
         }
 
